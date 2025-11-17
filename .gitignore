@@ -1,0 +1,129 @@
+# Dependencies
+frontend/node_modules/
+backend/node_modules/
+
+# Build outputs
+frontend/dist/
+frontend/dist-ssr/
+frontend/build/
+backend/dist/
+backend/build/
+
+# Environment variables
+frontend/.env
+frontend/.env.local
+frontend/.env.development.local
+frontend/.env.test.local
+frontend/.env.production.local
+frontend/*.local
+backend/.env
+backend/.env.local
+backend/.env.development.local
+backend/.env.test.local
+backend/.env.production.local
+backend/*.local
+
+# Logs (project-specific)
+frontend/logs/
+backend/logs/
+frontend/*.log
+backend/*.log
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+frontend/pnpm-debug.log*
+backend/npm-debug.log*
+backend/yarn-debug.log*
+backend/yarn-error.log*
+backend/pnpm-debug.log*
+
+# Runtime data
+frontend/pids/
+backend/pids/
+frontend/*.pid
+backend/*.pid
+frontend/*.seed
+backend/*.seed
+frontend/*.pid.lock
+backend/*.pid.lock
+
+# Coverage directory used by tools like istanbul
+frontend/coverage/
+backend/coverage/
+frontend/*.lcov
+backend/*.lcov
+frontend/.nyc_output/
+backend/.nyc_output/
+
+# Vite cache (frontend only)
+frontend/.vite/
+
+# TypeScript build info
+frontend/*.tsbuildinfo
+backend/*.tsbuildinfo
+frontend/.tsbuildinfo
+backend/.tsbuildinfo
+
+# Optional eslint cache
+frontend/.eslintcache
+backend/.eslintcache
+
+# Output of 'npm pack'
+frontend/*.tgz
+backend/*.tgz
+
+# Yarn Integrity file
+frontend/.yarn-integrity
+backend/.yarn-integrity
+
+# parcel-bundler cache
+frontend/.cache
+frontend/.parcel-cache
+backend/.cache
+backend/.parcel-cache
+
+# Next.js (if you ever use it)
+frontend/.next/
+frontend/out/
+backend/.next/
+backend/out/
+
+# Nuxt.js (if you ever use it)
+frontend/.nuxt/
+backend/.nuxt/
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+*.swp
+*.swo
+*~
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS files
+Thumbs.db
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Desktop.ini
+
+# Testing snapshots
+frontend/*.test.js.snap
+backend/*.test.js.snap
+
+# Temporary files
+frontend/tmp/
+frontend/temp/
+backend/tmp/
+backend/temp/
+frontend/*.tmp
+backend/*.tmp
