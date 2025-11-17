@@ -1,6 +1,6 @@
 import React, { useCallback } from 'react';
 import type { Node, Edge, Connection } from 'reactflow';
-import ReactFlow, { useNodesState, useEdgesState, Background, Controls, MiniMap } from 'reactflow';
+import ReactFlow, { useNodesState, useEdgesState, Background, Controls, MiniMap, MarkerType } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { useAppDispatch, useAppSelector } from '@/lib/hooks';
 import {
@@ -51,7 +51,12 @@ export function GraphCanvas() {
       stroke: edge.id === selectedEdgeId ? '#3b82f6' : '#6b7280',
       strokeWidth: edge.id === selectedEdgeId ? 3 : 2,
     },
-    markerEnd: edge.isDirected ? 'arrowclosed' : undefined,
+    markerEnd: edge.isDirected
+      ? {
+          type: MarkerType.ArrowClosed,
+          color: edge.id === selectedEdgeId ? '#3b82f6' : '#6b7280',
+        }
+      : undefined,
     labelStyle: {
       fill: '#374151',
       fontSize: '12px',
@@ -140,7 +145,17 @@ export function GraphCanvas() {
 
   // Handle node/edge deletion
   const onKeyDown = useCallback(
-    (event: React.KeyboardEvent) => {
+    (event: KeyboardEvent) => {
+      // Don't delete if user is typing in an input, textarea, or contenteditable element
+      const target = event.target as HTMLElement;
+      if (
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.isContentEditable
+      ) {
+        return;
+      }
+
       if (event.key === 'Delete' || event.key === 'Backspace') {
         if (selectedNodeId) {
           dispatch(removeNode(selectedNodeId));
@@ -153,9 +168,9 @@ export function GraphCanvas() {
   );
 
   React.useEffect(() => {
-    window.addEventListener('keydown', onKeyDown as any);
+    window.addEventListener('keydown', onKeyDown);
     return () => {
-      window.removeEventListener('keydown', onKeyDown as any);
+      window.removeEventListener('keydown', onKeyDown);
     };
   }, [onKeyDown]);
 

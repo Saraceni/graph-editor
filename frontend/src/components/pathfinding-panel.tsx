@@ -1,9 +1,8 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useAppDispatch, useAppSelector } from '@/lib/hooks';
 import { setPathfindingResult, clearPathfindingResult } from '@/lib/redux/slices/graphSlice';
 import { dijkstra, bfs, dfs } from '@/lib/pathfinding';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Select,
   SelectContent,
@@ -65,19 +64,15 @@ export function PathfindingPanel() {
     setError(null);
   };
 
-  const startNodeLabel = nodes.find(n => n.id === startNode)?.label;
-  const endNodeLabel = nodes.find(n => n.id === endNode)?.label;
   const resultPath = pathResult?.path.map(id => nodes.find(n => n.id === id)?.label).join(' → ');
 
   return (
-    <Card className="h-full flex flex-col">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Navigation className="w-4 h-4" />
-          Pathfinding
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="flex-1 flex flex-col gap-4">
+    <div className="h-full flex flex-col p-4">
+      <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+        <Navigation className="w-4 h-4" />
+        Pathfinding
+      </h2>
+      <div className="flex-1 flex flex-col gap-4">
         <div className="space-y-3">
           <div>
             <label className="text-sm font-medium">Algorithm</label>
@@ -131,7 +126,7 @@ export function PathfindingPanel() {
 
         {error && (
           <div className="flex gap-2 items-start p-2 bg-destructive/10 border border-destructive rounded text-sm text-destructive">
-            <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+            <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
             <span>{error}</span>
           </div>
         )}
@@ -139,13 +134,15 @@ export function PathfindingPanel() {
         {pathResult && (
           <div className="bg-primary/10 border border-primary rounded p-3 space-y-2">
             <div className="text-xs font-semibold text-primary">Path Found</div>
-            <div className="text-sm font-mono break-words">{resultPath}</div>
+            <div className="text-sm font-mono wrap-break-word max-h-[200px] overflow-y-auto">
+              {resultPath}
+            </div>
             <div className="text-xs text-muted-foreground">
               Distance: {pathResult.distance}
             </div>
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

@@ -1,9 +1,8 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useAppDispatch, useAppSelector } from '@/lib/hooks';
-import { addNode, removeNode, updateNode, selectNode } from '@/lib/redux/slices/graphSlice';
+import { addNode, removeNode, selectNode } from '@/lib/redux/slices/graphSlice';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Trash2, Plus } from 'lucide-react';
 
 export function NodePanel() {
@@ -45,12 +44,10 @@ export function NodePanel() {
   };
 
   return (
-    <Card className="h-full flex flex-col">
-      <CardHeader>
-        <CardTitle>Nodes</CardTitle>
-      </CardHeader>
-      <CardContent className="flex-1 flex flex-col gap-4">
-        <div className="flex gap-2">
+    <div className="h-full flex flex-col p-4">
+      <h2 className="text-lg font-semibold mb-4">Nodes</h2>
+      <div className="flex-1 flex flex-col gap-4 min-h-0 overflow-hidden">
+        <div className="flex gap-2 shrink-0">
           <Input
             placeholder="Node label..."
             value={nodeName}
@@ -59,7 +56,6 @@ export function NodePanel() {
           />
           <Button
             onClick={handleAddNode}
-            size="sm"
             className="gap-2"
           >
             <Plus className="w-4 h-4" />
@@ -67,7 +63,7 @@ export function NodePanel() {
           </Button>
         </div>
 
-        <div className="flex-1 overflow-y-auto space-y-2">
+        <div className="flex-1 overflow-y-auto space-y-2 min-h-0">
           {nodes.length === 0 ? (
             <p className="text-sm text-muted-foreground">No nodes yet</p>
           ) : (
@@ -95,7 +91,7 @@ export function NodePanel() {
             ))
           )}
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

@@ -1,9 +1,8 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useAppDispatch, useAppSelector } from '@/lib/hooks';
-import { addEdge, removeEdge, updateEdge, selectEdge } from '@/lib/redux/slices/graphSlice';
+import { addEdge, removeEdge, selectEdge } from '@/lib/redux/slices/graphSlice';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Select,
   SelectContent,
@@ -12,7 +11,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Trash2, Plus } from 'lucide-react';
+import { Trash2, Plus, ArrowLeftRight } from 'lucide-react';
+import { toast } from 'sonner';
 
 export function EdgePanel() {
   const dispatch = useAppDispatch();
@@ -27,12 +27,12 @@ export function EdgePanel() {
 
   const handleAddEdge = () => {
     if (!sourceNode || !targetNode) {
-      alert('Please select both source and target nodes');
+      toast.error('Please select both source and target nodes');
       return;
     }
 
     if (sourceNode === targetNode) {
-      alert('Source and target nodes must be different');
+      toast.error('Source and target nodes must be different');
       return;
     }
 
@@ -40,7 +40,7 @@ export function EdgePanel() {
       e => e.source === sourceNode && e.target === targetNode
     );
     if (edgeExists) {
-      alert('Edge between these nodes already exists');
+      toast.error('Edge between these nodes already exists');
       return;
     }
 
@@ -68,68 +68,96 @@ export function EdgePanel() {
     dispatch(selectEdge(edgeId));
   };
 
-  const currentSelectedEdge = edges.find(e => e.id === selectedEdge);
+  const handleSwapDirection = () => {
+    const temp = sourceNode;
+    setSourceNode(targetNode);
+    setTargetNode(temp);
+  };
 
   return (
-    <Card className="h-full flex flex-col">
-      <CardHeader>
-        <CardTitle>Edges</CardTitle>
-      </CardHeader>
-      <CardContent className="flex-1 flex flex-col gap-4">
-        <div className="space-y-3">
-          <Select value={sourceNode} onValueChange={setSourceNode}>
-            <SelectTrigger>
-              <SelectValue placeholder="Source node" />
-            </SelectTrigger>
-            <SelectContent>
-              {nodes.map(node => (
-                <SelectItem key={node.id} value={node.id}>
-                  {node.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+    <div className="h-full flex flex-col p-4">
+      <h2 className="text-lg font-semibold mb-4">Edges</h2>
+      <div className="flex-1 flex flex-col gap-4 min-h-0 overflow-hidden">
+        {/* Add new edge */}
+        <div className="space-y-3 border-b pb-4 shrink-0">
+          <h3 className="text-sm font-semibold">Add Edge</h3>
+          <div className="space-y-3">
+            <div className="flex gap-2 items-center w-full">
+              <div className="flex-1 min-w-0">
+                <Select value={sourceNode} onValueChange={setSourceNode}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Source node" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {nodes.map(node => (
+                      <SelectItem key={node.id} value={node.id}>
+                        {node.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {isDirected && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleSwapDirection}
+                  className="shrink-0"
+                  title="Swap direction"
+                >
+                  <ArrowLeftRight className="w-4 h-4" />
+                </Button>
+              )}
+              <div className="flex-1 min-w-0">
+                <Select value={targetNode} onValueChange={setTargetNode}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Target node" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {nodes.map(node => (
+                      <SelectItem key={node.id} value={node.id}>
+                        {node.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
 
-          <Select value={targetNode} onValueChange={setTargetNode}>
-            <SelectTrigger>
-              <SelectValue placeholder="Target node" />
-            </SelectTrigger>
-            <SelectContent>
-              {nodes.map(node => (
-                <SelectItem key={node.id} value={node.id}>
-                  {node.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            <div className="space-y-1.5">
+              <label htmlFor="add-weight" className="text-sm font-medium">
+                Weight (optional)
+              </label>
+              <div className="flex gap-2">
+                <Input
+                  id="add-weight"
+                  type="number"
+                  placeholder="Enter weight"
+                  value={weight}
+                  onChange={e => setWeight(e.target.value)}
+                  className="flex-1"
+                />
+                <Button onClick={handleAddEdge} className="gap-2">
+                  <Plus className="w-4 h-4" />
+                  Add
+                </Button>
+              </div>
+            </div>
 
-          <div className="flex gap-2">
-            <Input
-              type="number"
-              placeholder="Weight (optional)"
-              value={weight}
-              onChange={e => setWeight(e.target.value)}
-              className="flex-1"
-            />
-            <Button onClick={handleAddEdge} size="sm" className="gap-2">
-              <Plus className="w-4 h-4" />
-              Add
-            </Button>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Checkbox
-              id="directed"
-              checked={isDirected}
-              onCheckedChange={setIsDirected as any}
-            />
-            <label htmlFor="directed" className="text-sm font-medium cursor-pointer">
-              Directed Edge
-            </label>
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="directed"
+                checked={isDirected}
+                onCheckedChange={setIsDirected as any}
+              />
+              <label htmlFor="directed" className="text-sm font-medium cursor-pointer">
+                Directed Edge
+              </label>
+            </div>
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto space-y-2">
+        <div className="flex-1 overflow-y-auto space-y-2 min-h-0">
           {edges.length === 0 ? (
             <p className="text-sm text-muted-foreground">No edges yet</p>
           ) : (
@@ -164,7 +192,7 @@ export function EdgePanel() {
             })
           )}
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

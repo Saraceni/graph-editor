@@ -1,9 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { useAppDispatch, useAppSelector } from '@/lib/hooks';
 import { selectNode, selectEdge } from '@/lib/redux/slices/graphSlice';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Search, Filter } from 'lucide-react';
 
 type FilterType = 'all' | 'nodes' | 'edges';
@@ -44,14 +43,12 @@ export function SearchPanel() {
   const resultCount = searchResults.nodes.length + searchResults.edges.length;
 
   return (
-    <Card className="h-full flex flex-col">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Search className="w-4 h-4" />
-          Search
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="flex-1 flex flex-col gap-4">
+    <div className="h-full flex flex-col p-4">
+      <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+        <Search className="w-4 h-4" />
+        Search
+      </h2>
+      <div className="flex-1 flex flex-col gap-4">
         <div className="space-y-3">
           <Input
             placeholder="Search nodes, edges..."
@@ -128,7 +125,7 @@ export function SearchPanel() {
             <p className="text-sm text-muted-foreground">Enter search terms to find nodes and edges</p>
           )}
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
