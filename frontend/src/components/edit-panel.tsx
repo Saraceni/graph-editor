@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from '@/lib/hooks';
-import { updateNode, updateEdge, selectNode, selectEdge } from '@/lib/redux/slices/graphSlice';
+import { updateNode, updateEdge, removeNode, removeEdge, selectNode, selectEdge } from '@/lib/redux/slices/graphSlice';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -11,7 +11,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ArrowLeftRight, Edit } from 'lucide-react';
+import { ArrowLeftRight, Edit, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 export function EditPanel() {
@@ -136,6 +136,20 @@ export function EditPanel() {
     setTargetNode(temp);
   };
 
+  const handleDeleteNode = () => {
+    if (!currentNode) return;
+    dispatch(removeNode(currentNode.id));
+    dispatch(selectNode(null));
+    toast.success('Node deleted successfully');
+  };
+
+  const handleDeleteEdge = () => {
+    if (!currentEdge) return;
+    dispatch(removeEdge(currentEdge.id));
+    dispatch(selectEdge(null));
+    toast.success('Edge deleted successfully');
+  };
+
   const handleDeselect = () => {
     if (currentNode) {
       dispatch(selectNode(null));
@@ -225,9 +239,18 @@ export function EditPanel() {
               <p>ID: {currentNode.id}</p>
             </div>
 
-            <Button onClick={handleUpdateNode} className="w-full">
-              Update Node
-            </Button>
+            <div className="flex gap-2">
+              <Button onClick={handleUpdateNode} className="flex-1">
+                Update Node
+              </Button>
+              <Button
+                onClick={handleDeleteNode}
+                variant="destructive"
+                className="shrink-0"
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            </div>
           </div>
         ) : currentEdge ? (
           // Edge editing form
@@ -302,9 +325,18 @@ export function EditPanel() {
               </label>
             </div>
 
-            <Button onClick={handleUpdateEdge} className="w-full">
-              Update Edge
-            </Button>
+            <div className="flex gap-2">
+              <Button onClick={handleUpdateEdge} className="flex-1">
+                Update Edge
+              </Button>
+              <Button
+                onClick={handleDeleteEdge}
+                variant="destructive"
+                className="shrink-0"
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            </div>
           </div>
         ) : null}
       </div>
