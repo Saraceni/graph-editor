@@ -59,15 +59,31 @@ export function Edge3D({ edge, sourceNode, targetNode, isSelected, isInPath, onC
     return hovered ? baseRadius * 1.8 : baseRadius;
   }, [hovered, baseRadius]);
   
-  // Calculate edge length and midpoint
-  const edgeLength = useMemo(() => {
-    return start.distanceTo(end);
-  }, [start, end]);
+  // Calculate shortened end position for cylinder when arrowhead is present
+  const cylinderEnd = useMemo(() => {
+    if (!edge.isDirected) return end;
+    const edgeVector = new Vector3().subVectors(end, start).normalize();
+    const nodeRadius = 0.5;
+    // Use baseRadius for calculation (before hover effect) to maintain consistency
+    const arrowheadHeight = baseRadius * 4;
+    const arrowheadOffset = nodeRadius + arrowheadHeight / 2;
+    return new Vector3()
+      .copy(end)
+      .sub(edgeVector.clone().multiplyScalar(arrowheadOffset));
+  }, [start, end, edge.isDirected, baseRadius]);
 
-  // Calculate midpoint for label positioning
+  // Calculate edge length (shortened for directed edges to leave room for arrowhead)
+  const edgeLength = useMemo(() => {
+    const targetEnd = cylinderEnd;
+    const length = start.distanceTo(targetEnd);
+    return Math.max(0.1, length);
+  }, [start, cylinderEnd]);
+
+  // Calculate midpoint for label positioning (using full edge length, not shortened)
   const midpoint = useMemo(() => {
     return new Vector3().addVectors(start, end).multiplyScalar(0.5);
   }, [start, end]);
+
 
   // Calculate perpendicular offset for label to appear above the edge
   const labelOffset = useMemo(() => {
@@ -86,20 +102,63 @@ export function Edge3D({ edge, sourceNode, targetNode, isSelected, isInPath, onC
 
   // Calculate rotation to align cylinder with edge
   const quaternion = useMemo(() => {
-    const edgeVector = new Vector3().subVectors(end, start).normalize();
+    const cylinderVector = new Vector3().subVectors(cylinderEnd, start).normalize();
     const up = new Vector3(0, 1, 0);
     const quat = new Quaternion();
     
     // Handle edge case where edge is parallel to up vector
-    if (Math.abs(edgeVector.dot(up)) > 0.99) {
+    if (Math.abs(cylinderVector.dot(up)) > 0.99) {
       // Edge is parallel to Y axis, no rotation needed
       return [0, 0, 0, 1];
     }
     
     // Create quaternion that rotates from up vector to edge vector
-    quat.setFromUnitVectors(up, edgeVector);
+    quat.setFromUnitVectors(up, cylinderVector);
     return [quat.x, quat.y, quat.z, quat.w];
-  }, [start, end]);
+  }, [start, cylinderEnd]);
+
+  // Calculate midpoint of shortened cylinder for positioning
+  const cylinderMidpoint = useMemo(() => {
+    return new Vector3().addVectors(start, cylinderEnd).multiplyScalar(0.5);
+  }, [start, cylinderEnd]);
+
+  // Calculate arrowhead position and rotation for directed edges
+  const arrowheadData = useMemo(() => {
+    if (!edge.isDirected) return null;
+    
+    const edgeVector = new Vector3().subVectors(end, start).normalize();
+    const nodeRadius = 0.5; // Maximum node radius to ensure arrow doesn't overlap
+    // Use baseRadius for consistency (before hover effect)
+    const arrowheadHeight = baseRadius * 4; // Arrowhead height proportional to edge thickness
+    const arrowheadRadius = baseRadius * 2; // Arrowhead base radius
+    
+    // Position arrowhead at target node, offset by node radius + half arrowhead height
+    const offsetDistance = nodeRadius + arrowheadHeight / 2;
+    const arrowheadPosition = new Vector3()
+      .copy(end)
+      .sub(edgeVector.clone().multiplyScalar(offsetDistance));
+    
+    // Calculate rotation for arrowhead (cone points along edge vector)
+    const up = new Vector3(0, 1, 0);
+    const quat = new Quaternion();
+    
+    if (Math.abs(edgeVector.dot(up)) > 0.99) {
+      return {
+        position: arrowheadPosition,
+        quaternion: [0, 0, 0, 1],
+        height: arrowheadHeight,
+        radius: arrowheadRadius,
+      };
+    }
+    
+    quat.setFromUnitVectors(up, edgeVector);
+    return {
+      position: arrowheadPosition,
+      quaternion: [quat.x, quat.y, quat.z, quat.w],
+      height: arrowheadHeight,
+      radius: arrowheadRadius,
+    };
+  }, [start, end, edge.isDirected, baseRadius]);
 
   return (
     // @ts-ignore - React Three Fiber primitives
@@ -107,7 +166,7 @@ export function Edge3D({ edge, sourceNode, targetNode, isSelected, isInPath, onC
       {/* Edge as cylinder for thickness */}
       {/* @ts-ignore */}
       <mesh
-        position={[midpoint.x, midpoint.y, midpoint.z]}
+        position={[cylinderMidpoint.x, cylinderMidpoint.y, cylinderMidpoint.z]}
         quaternion={quaternion}
         renderOrder={0}
         // @ts-ignore
@@ -128,6 +187,27 @@ export function Edge3D({ edge, sourceNode, targetNode, isSelected, isInPath, onC
           roughness={0.4}
         />
       </mesh>
+
+      {/* Arrowhead for directed edges */}
+      {arrowheadData && (
+        // @ts-ignore - React Three Fiber primitives
+        <mesh
+          position={[arrowheadData.position.x, arrowheadData.position.y, arrowheadData.position.z]}
+          quaternion={arrowheadData.quaternion}
+          renderOrder={0}
+        >
+          {/* @ts-ignore */}
+          <coneGeometry args={[arrowheadData.radius, arrowheadData.height, 8]} />
+          {/* @ts-ignore */}
+          <meshStandardMaterial 
+            color={edgeColor}
+            emissive={edgeColor}
+            emissiveIntensity={isSelected ? 0.3 : hovered ? 0.2 : 0.1}
+            metalness={0.3}
+            roughness={0.4}
+          />
+        </mesh>
+      )}
 
       {/* Edge weight label */}
       {edge.weight !== undefined && (
