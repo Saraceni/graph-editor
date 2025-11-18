@@ -92,6 +92,137 @@ export function dijkstra(
 }
 
 /**
+ * A* algorithm for weighted shortest path with heuristic
+ * Uses Euclidean distance as heuristic based on node positions
+ * Works with both directed and undirected graphs
+ */
+export function astar(
+  nodes: GraphNode[],
+  edges: GraphEdge[],
+  startId: string,
+  endId: string
+): PathfindingResult | null {
+  // Create node lookup map
+  const nodeMap = new Map<string, GraphNode>();
+  nodes.forEach(node => {
+    nodeMap.set(node.id, node);
+  });
+
+  const startNode = nodeMap.get(startId);
+  const endNode = nodeMap.get(endId);
+  if (!startNode || !endNode) return null;
+
+  // Heuristic function: Euclidean distance in 3D space
+  const heuristic = (nodeId: string): number => {
+    const node = nodeMap.get(nodeId);
+    if (!node) return Infinity;
+    const dx = node.position.x - endNode.position.x;
+    const dy = node.position.y - endNode.position.y;
+    const dz = node.position.z - endNode.position.z;
+    return Math.sqrt(dx * dx + dy * dy + dz * dz);
+  };
+
+  // gScore: cost from start to node
+  const gScore: Record<string, number> = {};
+  // fScore: gScore + heuristic (estimated total cost)
+  const fScore: Record<string, number> = {};
+  const previous: Record<string, string | null> = {};
+  const visitedNodes = new Set<string>();
+  const visitedEdges = new Set<string>();
+  
+  // Priority queue: array of [nodeId, fScore]
+  const openSet: Array<[string, number]> = [];
+  const inOpenSet = new Set<string>();
+
+  // Initialize
+  nodes.forEach(node => {
+    gScore[node.id] = node.id === startId ? 0 : Infinity;
+    fScore[node.id] = node.id === startId ? heuristic(startId) : Infinity;
+    previous[node.id] = null;
+  });
+
+  // Add start node to open set
+  openSet.push([startId, fScore[startId]]);
+  inOpenSet.add(startId);
+
+  // Helper to maintain priority queue (min-heap)
+  const insertIntoQueue = (nodeId: string, score: number) => {
+    openSet.push([nodeId, score]);
+    inOpenSet.add(nodeId);
+    // Simple insertion - could be optimized with a proper heap
+    openSet.sort((a, b) => a[1] - b[1]);
+  };
+
+  const removeFromQueue = (): string | null => {
+    if (openSet.length === 0) return null;
+    const [nodeId] = openSet.shift()!;
+    inOpenSet.delete(nodeId);
+    return nodeId;
+  };
+
+  while (openSet.length > 0) {
+    const currentId = removeFromQueue();
+    if (!currentId) break;
+
+    visitedNodes.add(currentId);
+
+    if (currentId === endId) {
+      // Reconstruct path
+      const path: string[] = [];
+      let current: string | null = endId;
+      while (current !== null) {
+        path.unshift(current);
+        current = previous[current];
+      }
+
+      return {
+        path,
+        distance: gScore[endId],
+        visitedNodes: Array.from(visitedNodes),
+        visitedEdges: Array.from(visitedEdges),
+        startNode: startId,
+        endNode: endId,
+      };
+    }
+
+    // Check neighbors
+    const outgoingEdges = edges.filter(e => e.source === currentId);
+    const incomingEdges = edges.filter(
+      e => e.target === currentId && !e.isDirected
+    );
+    const allEdges = [...outgoingEdges, ...incomingEdges];
+
+    allEdges.forEach(edge => {
+      const neighborId = edge.source === currentId ? edge.target : edge.source;
+      visitedEdges.add(edge.id);
+
+      const weight = edge.weight || 1;
+      const tentativeGScore = gScore[currentId] + weight;
+
+      if (tentativeGScore < gScore[neighborId]) {
+        previous[neighborId] = currentId;
+        gScore[neighborId] = tentativeGScore;
+        fScore[neighborId] = tentativeGScore + heuristic(neighborId);
+
+        if (!inOpenSet.has(neighborId)) {
+          insertIntoQueue(neighborId, fScore[neighborId]);
+        } else {
+          // Update existing entry in queue
+          const index = openSet.findIndex(([id]) => id === neighborId);
+          if (index !== -1) {
+            openSet[index][1] = fScore[neighborId];
+            openSet.sort((a, b) => a[1] - b[1]);
+          }
+        }
+      }
+    });
+  }
+
+  // No path found
+  return null;
+}
+
+/**
  * BFS for unweighted shortest path
  */
 export function bfs(

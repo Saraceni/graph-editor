@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useAppDispatch, useAppSelector } from '@/lib/hooks';
 import { setPathfindingResult, clearPathfindingResult, setCycleResult, clearCycleResult, toggleCycleSelection, selectAllCycles, deselectAllCycles } from '@/lib/redux/slices/graphSlice';
-import { dijkstra, bfs, findCycles } from '@/lib/pathfinding';
+import { dijkstra, bfs, astar, findCycles } from '@/lib/pathfinding';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -15,7 +15,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { AlertCircle, Waypoints } from 'lucide-react';
 
 type AlgorithmMode = 'shortest-path' | 'cycle-detection';
-type PathAlgorithm = 'dijkstra' | 'bfs';
+type PathAlgorithm = 'dijkstra' | 'bfs' | 'astar';
 
 export function PathfindingPanel() {
   const dispatch = useAppDispatch();
@@ -50,6 +50,8 @@ export function PathfindingPanel() {
         result = dijkstra(graphState.nodes, graphState.edges, startNode, endNode);
       } else if (pathAlgorithm === 'bfs') {
         result = bfs(graphState.nodes, graphState.edges, startNode, endNode);
+      } else if (pathAlgorithm === 'astar') {
+        result = astar(graphState.nodes, graphState.edges, startNode, endNode);
       }
 
       if (result && result.path) {
@@ -115,6 +117,7 @@ export function PathfindingPanel() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="astar">A* (Heuristic)</SelectItem>
                     <SelectItem value="dijkstra">Dijkstra (Weighted)</SelectItem>
                     <SelectItem value="bfs">BFS (Unweighted)</SelectItem>
                   </SelectContent>
@@ -222,13 +225,12 @@ export function PathfindingPanel() {
                     '#6366f1', // indigo
                   ];
                   const color = cycleColors[index % cycleColors.length];
-                  
+
                   return (
-                    <div 
-                      key={index} 
-                      className={`text-sm p-2 bg-background rounded border cursor-pointer transition-colors ${
-                        isSelected ? 'border-primary border-2' : ''
-                      }`}
+                    <div
+                      key={index}
+                      className={`text-sm p-2 bg-background rounded border cursor-pointer transition-colors ${isSelected ? 'border-primary border-2' : ''
+                        }`}
                       onClick={() => dispatch(toggleCycleSelection(index))}
                     >
                       <div className="flex items-start gap-2">
@@ -239,8 +241,8 @@ export function PathfindingPanel() {
                         />
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1">
-                            <div 
-                              className="w-3 h-3 rounded border border-gray-300" 
+                            <div
+                              className="w-3 h-3 rounded border border-gray-300"
                               style={{ backgroundColor: isSelected ? color : '#9ca3af' }}
                             />
                             <div className="font-semibold">
@@ -266,7 +268,7 @@ export function PathfindingPanel() {
               </div>
             </div>
           )}
-          
+
           {cycleResult && cycleResult.cycles.length === 0 && (
             <div className="bg-muted/50 border border-muted rounded p-3 text-sm text-muted-foreground">
               No cycles detected in the graph.
