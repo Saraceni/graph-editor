@@ -30,6 +30,10 @@ export interface GraphState {
   pathfindingResult?: {
     path: string[];
     distance: number;
+    visitedNodes: string[];
+    visitedEdges: string[];
+    startNode: string;
+    endNode: string;
   } | null;
   settings: GraphSettings;
 }

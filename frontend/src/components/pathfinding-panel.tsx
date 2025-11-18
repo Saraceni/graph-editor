@@ -139,6 +139,37 @@ export function PathfindingPanel() {
             </div>
           </div>
         )}
+
+        {/* Color Legend */}
+        <div className="border rounded p-3 space-y-2">
+          <div className="text-xs font-semibold">Color Legend</div>
+          <div className="space-y-1.5 text-xs">
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 rounded border border-gray-300" style={{ backgroundColor: '#10b981' }} />
+              <span>Start node</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 rounded border border-gray-300" style={{ backgroundColor: '#ef4444' }} />
+              <span>End node</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 rounded border border-gray-300" style={{ backgroundColor: '#f59e0b' }} />
+              <span>Path node/edge</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 rounded border border-gray-300" style={{ backgroundColor: '#60a5fa' }} />
+              <span>Node/edge traversed</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 rounded border border-gray-300" style={{ backgroundColor: '#9ca3af' }} />
+              <span>Node not traversed</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 rounded border border-gray-300" style={{ backgroundColor: '#d4d4d4' }} />
+              <span>Edge not traversed</span>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

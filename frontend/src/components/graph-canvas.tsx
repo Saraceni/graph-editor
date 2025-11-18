@@ -102,8 +102,17 @@ function GraphScene() {
 
 
 
-  // Get pathfinding path node IDs
+  // Get pathfinding visualization data
   const pathNodeIds = pathfindingResult?.path || [];
+  const visitedNodeIds = useMemo(() => {
+    return pathfindingResult?.visitedNodes ? new Set(pathfindingResult.visitedNodes) : new Set<string>();
+  }, [pathfindingResult]);
+  const visitedEdgeIds = useMemo(() => {
+    return pathfindingResult?.visitedEdges ? new Set(pathfindingResult.visitedEdges) : new Set<string>();
+  }, [pathfindingResult]);
+  const startNodeId = pathfindingResult?.startNode;
+  const endNodeId = pathfindingResult?.endNode;
+  
   const pathEdgeIds = useMemo(() => {
     if (!pathfindingResult?.path) return new Set<string>();
     const edgeIds = new Set<string>();
@@ -139,12 +148,18 @@ function GraphScene() {
       {/* @ts-ignore - React Three Fiber primitives */}
       <axesHelper args={[5]} />
 
-          {graphState.nodes.map((node) => (
+          {graphState.nodes.map((node) => {
+            const isInPath = pathNodeIds.includes(node.id);
+            const isVisited = visitedNodeIds.has(node.id) && !isInPath && node.id !== startNodeId && node.id !== endNodeId;
+            return (
               <Node3D
                 key={node.id}
                 node={node}
                 isSelected={node.id === selectedNodeId}
-                isInPath={pathNodeIds.includes(node.id)}
+                isInPath={isInPath}
+                isStartNode={node.id === startNodeId}
+                isEndNode={node.id === endNodeId}
+                isVisited={isVisited}
                 onClick={handleNodeClick}
                 onDrag={handleNodeDrag}
                 onDragStart={() => setIsDraggingNode(true)}
@@ -152,12 +167,16 @@ function GraphScene() {
                 canDrag={node.id === selectedNodeId}
                 settings={settings}
               />
-          ))}
+            );
+          })}
 
       {graphState.edges.map((edge) => {
         const sourceNode = graphState.nodes.find((n) => n.id === edge.source);
         const targetNode = graphState.nodes.find((n) => n.id === edge.target);
         if (!sourceNode || !targetNode) return null;
+
+        const isInPath = pathEdgeIds.has(edge.id);
+        const isVisited = visitedEdgeIds.has(edge.id) && !isInPath;
 
         return (
           <Edge3D
@@ -166,7 +185,8 @@ function GraphScene() {
             sourceNode={sourceNode}
             targetNode={targetNode}
             isSelected={edge.id === selectedEdgeId}
-            isInPath={pathEdgeIds.has(edge.id)}
+            isInPath={isInPath}
+            isVisited={isVisited}
             onClick={handleEdgeClick}
             settings={settings}
           />

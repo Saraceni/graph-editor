@@ -1,8 +1,12 @@
 import type { GraphNode, GraphEdge } from '@/lib/redux/slices/graphSlice';
 
-interface PathfindingResult {
+export interface PathfindingResult {
   path: string[];
   distance: number;
+  visitedNodes: string[];
+  visitedEdges: string[];
+  startNode: string;
+  endNode: string;
 }
 
 /**
@@ -18,6 +22,8 @@ export function dijkstra(
   const distances: Record<string, number> = {};
   const previous: Record<string, string | null> = {};
   const unvisited = new Set<string>();
+  const visitedNodes = new Set<string>();
+  const visitedEdges = new Set<string>();
 
   // Initialize
   nodes.forEach(node => {
@@ -41,6 +47,7 @@ export function dijkstra(
     if (currentId === null || distances[currentId] === Infinity) break;
 
     unvisited.delete(currentId);
+    visitedNodes.add(currentId);
 
     // Check neighbors
     const outgoingEdges = edges.filter(e => e.source === currentId);
@@ -51,6 +58,7 @@ export function dijkstra(
 
     allEdges.forEach(edge => {
       const neighborId = edge.source === currentId ? edge.target : edge.source;
+      visitedEdges.add(edge.id);
       if (unvisited.has(neighborId)) {
         const weight = edge.weight || 1;
         const newDistance = distances[currentId!] + weight;
@@ -75,6 +83,10 @@ export function dijkstra(
   return {
     path,
     distance: distances[endId],
+    visitedNodes: Array.from(visitedNodes),
+    visitedEdges: Array.from(visitedEdges),
+    startNode: startId,
+    endNode: endId,
   };
 }
 
@@ -82,12 +94,13 @@ export function dijkstra(
  * BFS for unweighted shortest path
  */
 export function bfs(
-  nodes: GraphNode[],
+  _nodes: GraphNode[],
   edges: GraphEdge[],
   startId: string,
   endId: string
 ): PathfindingResult | null {
   const visited = new Set<string>();
+  const visitedEdges = new Set<string>();
   const queue: string[] = [startId];
   const parent: Record<string, string | null> = {};
   parent[startId] = null;
@@ -110,6 +123,7 @@ export function bfs(
 
     allEdges.forEach(edge => {
       const neighborId = edge.source === currentId ? edge.target : edge.source;
+      visitedEdges.add(edge.id);
       if (!visited.has(neighborId)) {
         parent[neighborId] = currentId;
         queue.push(neighborId);
@@ -130,6 +144,10 @@ export function bfs(
   return {
     path,
     distance: path.length - 1,
+    visitedNodes: Array.from(visited),
+    visitedEdges: Array.from(visitedEdges),
+    startNode: startId,
+    endNode: endId,
   };
 }
 
@@ -137,7 +155,7 @@ export function bfs(
  * DFS to find all connected nodes from a start node
  */
 export function dfs(
-  nodes: GraphNode[],
+  _nodes: GraphNode[],
   edges: GraphEdge[],
   startId: string
 ): string[] {
@@ -172,12 +190,13 @@ export function dfs(
  * Returns a path if one exists (not necessarily shortest)
  */
 export function dfsPath(
-  nodes: GraphNode[],
+  _nodes: GraphNode[],
   edges: GraphEdge[],
   startId: string,
   endId: string
 ): PathfindingResult | null {
   const visited = new Set<string>();
+  const visitedEdges = new Set<string>();
   const stack: { nodeId: string; path: string[] }[] = [{ nodeId: startId, path: [startId] }];
 
   while (stack.length > 0) {
@@ -190,6 +209,10 @@ export function dfsPath(
       return {
         path,
         distance: path.length - 1,
+        visitedNodes: Array.from(visited),
+        visitedEdges: Array.from(visitedEdges),
+        startNode: startId,
+        endNode: endId,
       };
     }
 
@@ -202,6 +225,7 @@ export function dfsPath(
 
     allEdges.forEach(edge => {
       const neighborId = edge.source === currentId ? edge.target : edge.source;
+      visitedEdges.add(edge.id);
       if (!visited.has(neighborId)) {
         stack.push({ nodeId: neighborId, path: [...path, neighborId] });
       }

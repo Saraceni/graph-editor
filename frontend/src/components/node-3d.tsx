@@ -8,6 +8,9 @@ interface Node3DProps {
   node: GraphNode;
   isSelected: boolean;
   isInPath?: boolean;
+  isStartNode?: boolean;
+  isEndNode?: boolean;
+  isVisited?: boolean;
   onClick: (nodeId: string) => void;
   onDrag?: (nodeId: string, position: Vector3) => void;
   onDragStart?: () => void;
@@ -16,7 +19,7 @@ interface Node3DProps {
   settings: GraphSettings;
 }
 
-export function Node3D({ node, isSelected, isInPath, onClick, onDrag, onDragStart, onDragEnd, canDrag = false, settings }: Node3DProps) {
+export function Node3D({ node, isSelected, isInPath, isStartNode, isEndNode, isVisited, onClick, onDrag, onDragStart, onDragEnd, canDrag = false, settings }: Node3DProps) {
   const meshRef = useRef<Mesh>(null);
   const { raycaster, camera, pointer } = useThree();
   const [hovered, setHovered] = useState(false);
@@ -102,7 +105,18 @@ export function Node3D({ node, isSelected, isInPath, onClick, onDrag, onDragStar
 
 
 
-  const nodeColor = isSelected ? '#3b82f6' : isInPath ? '#f59e0b' : settings.nodeColor;
+  // Color priority: selected > start > end > path > visited > default
+  const nodeColor = isSelected 
+    ? '#3b82f6' 
+    : isStartNode 
+    ? '#10b981' // green for start
+    : isEndNode 
+    ? '#ef4444' // red for end
+    : isInPath 
+    ? '#f59e0b' // orange for path
+    : isVisited 
+    ? '#60a5fa' // light blue for visited
+    : settings.nodeColor;
   const nodeSize = isSelected ? 0.5 : hovered ? 0.45 : 0.4;
 
   return (

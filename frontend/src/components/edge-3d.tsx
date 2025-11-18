@@ -10,11 +10,12 @@ interface Edge3DProps {
   targetNode: GraphNode;
   isSelected: boolean;
   isInPath?: boolean;
+  isVisited?: boolean;
   onClick: (edgeId: string) => void;
   settings: GraphSettings;
 }
 
-export function Edge3D({ edge, sourceNode, targetNode, isSelected, isInPath, onClick, settings }: Edge3DProps) {
+export function Edge3D({ edge, sourceNode, targetNode, isSelected, isInPath, isVisited, onClick, settings }: Edge3DProps) {
   const [hovered, setHovered] = useState(false);
 
   // Edge connects to node centers for visual connection
@@ -43,9 +44,16 @@ export function Edge3D({ edge, sourceNode, targetNode, isSelected, isInPath, onC
   };
 
   // Edge styling with hover effects - memoized to update when settings change
+  // Color priority: selected > path > visited > default
   const baseColor = useMemo(() => {
-    return isSelected ? '#3b82f6' : isInPath ? '#f59e0b' : settings.edgeColor;
-  }, [isSelected, isInPath, settings.edgeColor]);
+    return isSelected 
+      ? '#3b82f6' 
+      : isInPath 
+      ? '#f59e0b' // orange for path
+      : isVisited 
+      ? '#60a5fa' // light blue for visited
+      : settings.edgeColor;
+  }, [isSelected, isInPath, isVisited, settings.edgeColor]);
   
   const edgeColor = useMemo(() => {
     return hovered ? '#3b82f6' : baseColor;
