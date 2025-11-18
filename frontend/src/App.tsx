@@ -14,7 +14,7 @@ import { PanelNavbar } from '@/components/panel-navbar';
 import { Button } from '@/components/ui/button';
 import { Download, Upload, Trash2, FileText } from 'lucide-react';
 import { Toaster } from "@/components/ui/sonner"
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
+import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Card } from '@/components/ui/card';
 
@@ -136,16 +136,16 @@ function GraphAppContent({ activePanel, setActivePanel }: { activePanel: PanelTy
   };
 
   return (
-    <div className="flex h-screen bg-background">
+    <div className="flex h-full w-full bg-background overflow-hidden">
       {/* Panel Container - Left side */}
-      <div className="w-80 bg-card border-r border-border flex">
+      <div className="w-80 bg-card border-r border-border flex shrink-0">
         <div className="flex-1 flex flex-col overflow-hidden">
           {renderPanel()}
         </div>
       </div>
 
       {/* Canvas */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <div className="bg-card border-b border-border p-3 flex items-center justify-between">
           <div className="flex gap-2">
             <SidebarTrigger />
@@ -243,7 +243,7 @@ function GraphAppContent({ activePanel, setActivePanel }: { activePanel: PanelTy
             </Button>
           </div>
         </div>
-        <div className="flex-1 bg-background">
+        <div className="flex-1 bg-background min-w-0 min-h-0 overflow-hidden">
           <GraphCanvas />
         </div>
       </div>
@@ -257,9 +257,9 @@ export default function RootPage() {
     <Provider store={store}>
       <SidebarProvider>
         <PanelNavbar activePanel={activePanel} onPanelChange={setActivePanel} />
-        <main className='flex-1'>
+        <SidebarInset className="h-screen overflow-hidden">
           <GraphAppContent activePanel={activePanel} setActivePanel={setActivePanel} />
-        </main>
+        </SidebarInset>
       </SidebarProvider>
       <Toaster />
     </Provider>

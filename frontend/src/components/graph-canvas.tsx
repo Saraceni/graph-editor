@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Grid, PerspectiveCamera } from '@react-three/drei';
 import { Vector3 } from 'three';
@@ -280,6 +280,7 @@ export function GraphCanvas() {
   const dispatch = useAppDispatch();
   const selectedNodeId = useAppSelector((state) => state.graph.selectedNode);
   const selectedEdgeId = useAppSelector((state) => state.graph.selectedEdge);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   // Handle keyboard shortcuts
   useEffect(() => {
@@ -308,14 +309,19 @@ export function GraphCanvas() {
     };
   }, [selectedNodeId, selectedEdgeId, dispatch]);
 
+  // React Three Fiber's Canvas has built-in ResizeObserver
+  // We just need to ensure the container is properly constrained
+  // The key is having min-w-0 and min-h-0 on the container to allow flex shrinking
+
   return (
-    <div className="relative w-full h-full">
+    <div ref={containerRef} className="relative w-full h-full min-w-0 min-h-0">
       <Canvas
         camera={{ position: [0, 0, 15], fov: 50 }}
         onPointerMissed={() => {
           dispatch(selectNode(null));
           dispatch(selectEdge(null));
         }}
+        gl={{ antialias: true }}
       >
         <PerspectiveCamera makeDefault position={[0, 0, 15]} />
         <GraphScene />
