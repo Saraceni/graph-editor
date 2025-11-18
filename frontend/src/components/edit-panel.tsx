@@ -23,6 +23,7 @@ export function EditPanel() {
 
   // Node editing state
   const [nodeLabel, setNodeLabel] = useState('');
+  const [nodePosition, setNodePosition] = useState({ x: '0', y: '0', z: '0' });
 
   // Edge editing state
   const [sourceNode, setSourceNode] = useState('');
@@ -36,9 +37,15 @@ export function EditPanel() {
       const node = nodes.find(n => n.id === selectedNode);
       if (node) {
         setNodeLabel(node.label);
+        setNodePosition({
+          x: node.position.x.toString(),
+          y: node.position.y.toString(),
+          z: node.position.z.toString(),
+        });
       }
     } else {
       setNodeLabel('');
+      setNodePosition({ x: '0', y: '0', z: '0' });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedNode]);
@@ -85,6 +92,11 @@ export function EditPanel() {
       updateNode({
         ...currentNode,
         label: nodeLabel.trim(),
+        position: {
+          x: parseFloat(nodePosition.x) || 0,
+          y: parseFloat(nodePosition.y) || 0,
+          z: parseFloat(nodePosition.z) || 0,
+        },
       })
     );
     toast.success('Node updated successfully');
@@ -182,9 +194,35 @@ export function EditPanel() {
               />
             </div>
 
-            <div className="text-xs text-muted-foreground space-y-1">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Position (x, y, z)</label>
+              <div className="grid grid-cols-3 gap-2">
+                <Input
+                  type="number"
+                  step="0.1"
+                  placeholder="X"
+                  value={nodePosition.x}
+                  onChange={e => setNodePosition({ ...nodePosition, x: e.target.value })}
+                />
+                <Input
+                  type="number"
+                  step="0.1"
+                  placeholder="Y"
+                  value={nodePosition.y}
+                  onChange={e => setNodePosition({ ...nodePosition, y: e.target.value })}
+                />
+                <Input
+                  type="number"
+                  step="0.1"
+                  placeholder="Z"
+                  value={nodePosition.z}
+                  onChange={e => setNodePosition({ ...nodePosition, z: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div className="text-xs text-muted-foreground">
               <p>ID: {currentNode.id}</p>
-              <p>Position: ({Math.round(currentNode.position.x)}, {Math.round(currentNode.position.y)})</p>
             </div>
 
             <Button onClick={handleUpdateNode} className="w-full">

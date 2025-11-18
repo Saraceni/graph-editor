@@ -9,13 +9,14 @@ import { EdgePanel } from '@/components/edge-panel';
 import { PathfindingPanel } from '@/components/pathfinding-panel';
 import { SearchPanel } from '@/components/search-panel';
 import { EditPanel } from '@/components/edit-panel';
+import { SettingsPanel } from '@/components/settings-panel';
 import { PanelNavbar } from '@/components/panel-navbar';
 import { Button } from '@/components/ui/button';
 import { Download, Upload, Trash2 } from 'lucide-react';
 import { Toaster } from "@/components/ui/sonner"
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
 
-type PanelType = 'nodes' | 'edges' | 'search' | 'pathfinding' | 'edit';
+type PanelType = 'nodes' | 'edges' | 'search' | 'pathfinding' | 'edit' | 'settings';
 
 function GraphAppContent({ activePanel, setActivePanel }: { activePanel: PanelType, setActivePanel: (panel: PanelType) => void }) {
   const dispatch = useDispatch();
@@ -104,6 +105,8 @@ function GraphAppContent({ activePanel, setActivePanel }: { activePanel: PanelTy
         return <PathfindingPanel />;
       case 'edit':
         return <EditPanel />;
+      case 'settings':
+        return <SettingsPanel />;
       default:
         return <SearchPanel />;
     }

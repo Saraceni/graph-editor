@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useAppDispatch, useAppSelector } from '@/lib/hooks';
 import { setPathfindingResult, clearPathfindingResult } from '@/lib/redux/slices/graphSlice';
-import { dijkstra, bfs, dfs } from '@/lib/pathfinding';
+import { dijkstra, bfs, dfsPath } from '@/lib/pathfinding';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -45,10 +45,7 @@ export function PathfindingPanel() {
     } else if (algorithm === 'bfs') {
       result = bfs(graphState.nodes, graphState.edges, startNode, endNode);
     } else if (algorithm === 'dfs') {
-      const connectedNodes = dfs(graphState.nodes, graphState.edges, startNode);
-      if (connectedNodes.includes(endNode)) {
-        result = { path: connectedNodes, distance: 0 };
-      }
+      result = dfsPath(graphState.nodes, graphState.edges, startNode, endNode);
     }
 
     if (result && result.path) {

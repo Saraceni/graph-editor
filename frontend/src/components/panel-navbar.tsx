@@ -6,10 +6,10 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from '@/components/ui/sidebar';
-import { CircleDot, Network, Search, Navigation, Edit } from 'lucide-react';
+import { CircleDot, Network, Search, Navigation, Edit, Settings } from 'lucide-react';
 import type { ReactNode } from 'react';
 
-type PanelType = 'nodes' | 'edges' | 'search' | 'pathfinding' | 'edit';
+type PanelType = 'nodes' | 'edges' | 'search' | 'pathfinding' | 'edit' | 'settings';
 
 interface PanelNavbarProps {
   activePanel: PanelType;
@@ -23,6 +23,7 @@ export function PanelNavbar({ activePanel, onPanelChange }: PanelNavbarProps) {
     { id: 'search', icon: <Search className="w-4 h-4" />, label: 'Search' },
     { id: 'pathfinding', icon: <Navigation className="w-4 h-4" />, label: 'Pathfinding' },
     { id: 'edit', icon: <Edit className="w-4 h-4" />, label: 'Edit' },
+    { id: 'settings', icon: <Settings className="w-4 h-4" />, label: 'Settings' },
   ];
 
   return (

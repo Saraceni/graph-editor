@@ -166,3 +166,47 @@ export function dfs(
 
   return Array.from(visited);
 }
+
+/**
+ * DFS for pathfinding from start to end node
+ * Returns a path if one exists (not necessarily shortest)
+ */
+export function dfsPath(
+  nodes: GraphNode[],
+  edges: GraphEdge[],
+  startId: string,
+  endId: string
+): PathfindingResult | null {
+  const visited = new Set<string>();
+  const stack: { nodeId: string; path: string[] }[] = [{ nodeId: startId, path: [startId] }];
+
+  while (stack.length > 0) {
+    const { nodeId: currentId, path } = stack.pop()!;
+    
+    if (visited.has(currentId)) continue;
+    visited.add(currentId);
+
+    if (currentId === endId) {
+      return {
+        path,
+        distance: path.length - 1,
+      };
+    }
+
+    // Find neighbors
+    const outgoingEdges = edges.filter(e => e.source === currentId);
+    const incomingEdges = edges.filter(
+      e => e.target === currentId && !e.isDirected
+    );
+    const allEdges = [...outgoingEdges, ...incomingEdges];
+
+    allEdges.forEach(edge => {
+      const neighborId = edge.source === currentId ? edge.target : edge.source;
+      if (!visited.has(neighborId)) {
+        stack.push({ nodeId: neighborId, path: [...path, neighborId] });
+      }
+    });
+  }
+
+  return null;
+}

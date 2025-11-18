@@ -3,7 +3,7 @@ import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 export interface GraphNode {
   id: string;
   label: string;
-  position: { x: number; y: number };
+  position: { x: number; y: number; z: number };
 }
 
 export interface GraphEdge {
@@ -12,6 +12,14 @@ export interface GraphEdge {
   target: string;
   weight?: number;
   isDirected: boolean;
+}
+
+export interface GraphSettings {
+  nodeColor: string;
+  nodeLabelColor: string;
+  edgeColor: string;
+  edgeLabelColor: string;
+  edgeThickness: number;
 }
 
 export interface GraphState {
@@ -23,7 +31,17 @@ export interface GraphState {
     path: string[];
     distance: number;
   } | null;
+  layoutMode?: 'manual' | 'auto';
+  settings: GraphSettings;
 }
+
+const defaultSettings: GraphSettings = {
+  nodeColor: '#b7c1fb',
+  nodeLabelColor: '#636363',
+  edgeColor: '#d4d4d4',
+  edgeLabelColor: '#000000',
+  edgeThickness: 0.02,
+};
 
 const initialState: GraphState = {
   nodes: [],
@@ -31,6 +49,8 @@ const initialState: GraphState = {
   selectedNode: null,
   selectedEdge: null,
   pathfindingResult: null,
+  layoutMode: 'manual',
+  settings: defaultSettings,
 };
 
 const graphSlice = createSlice({
@@ -105,8 +125,22 @@ const graphSlice = createSlice({
       state.selectedEdge = null;
       state.pathfindingResult = null;
     },
-    setGraphState: (state, action: PayloadAction<GraphState>) => {
-      return action.payload;
+    setGraphState: (_state, action: PayloadAction<GraphState>) => {
+      // Ensure settings exist when loading from storage (migration for old saved states)
+      const newState = {
+        ...action.payload,
+        settings: action.payload.settings || defaultSettings,
+      };
+      return newState;
+    },
+    setLayoutMode: (state, action: PayloadAction<'manual' | 'auto'>) => {
+      state.layoutMode = action.payload;
+    },
+    updateSettings: (state, action: PayloadAction<Partial<GraphSettings>>) => {
+      state.settings = { ...state.settings, ...action.payload };
+    },
+    resetSettings: (state) => {
+      state.settings = defaultSettings;
     },
   },
 });
@@ -124,6 +158,9 @@ export const {
   clearPathfindingResult,
   resetGraph,
   setGraphState,
+  setLayoutMode,
+  updateSettings,
+  resetSettings,
 } = graphSlice.actions;
 
 export default graphSlice.reducer;
