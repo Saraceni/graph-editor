@@ -69,8 +69,8 @@ export function PathfindingPanel() {
         <Navigation className="w-4 h-4" />
         Pathfinding
       </h2>
-      <div className="flex-1 flex flex-col gap-4">
-        <div className="space-y-3">
+      <div className="flex-1 flex flex-col gap-4 min-h-0">
+        <div className="space-y-3 shrink-0">
           <div>
             <label className="text-sm font-medium">Algorithm</label>
             <Select value={algorithm} onValueChange={setAlgorithm as any}>
@@ -121,52 +121,54 @@ export function PathfindingPanel() {
           </div>
         </div>
 
-        {error && (
-          <div className="flex gap-2 items-start p-2 bg-destructive/10 border border-destructive rounded text-sm text-destructive">
-            <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
-            <span>{error}</span>
-          </div>
-        )}
+        <div className="flex-1 overflow-y-auto space-y-4 min-h-0">
+          {error && (
+            <div className="flex gap-2 items-start p-2 bg-destructive/10 border border-destructive rounded text-sm text-destructive shrink-0">
+              <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
 
-        {pathResult && (
-          <div className="bg-primary/10 border border-primary rounded p-3 space-y-2">
-            <div className="text-xs font-semibold text-primary">Path Found</div>
-            <div className="text-sm font-mono wrap-break-word max-h-[200px] overflow-y-auto">
-              {resultPath}
+          {pathResult && (
+            <div className="bg-primary/10 border border-primary rounded p-3 space-y-2 shrink-0">
+              <div className="text-xs font-semibold text-primary">Path Found</div>
+              <div className="text-sm font-mono wrap-break-word">
+                {resultPath}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                Distance: {pathResult.distance}
+              </div>
             </div>
-            <div className="text-xs text-muted-foreground">
-              Distance: {pathResult.distance}
-            </div>
-          </div>
-        )}
+          )}
 
-        {/* Color Legend */}
-        <div className="border rounded p-3 space-y-2">
-          <div className="text-xs font-semibold">Color Legend</div>
-          <div className="space-y-1.5 text-xs">
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 rounded border border-gray-300" style={{ backgroundColor: '#10b981' }} />
-              <span>Start node</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 rounded border border-gray-300" style={{ backgroundColor: '#ef4444' }} />
-              <span>End node</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 rounded border border-gray-300" style={{ backgroundColor: '#f59e0b' }} />
-              <span>Path node/edge</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 rounded border border-gray-300" style={{ backgroundColor: '#60a5fa' }} />
-              <span>Node/edge traversed</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 rounded border border-gray-300" style={{ backgroundColor: '#9ca3af' }} />
-              <span>Node not traversed</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 rounded border border-gray-300" style={{ backgroundColor: '#d4d4d4' }} />
-              <span>Edge not traversed</span>
+          {/* Color Legend */}
+          <div className="border rounded p-3 space-y-2 shrink-0">
+            <div className="text-xs font-semibold">Color Legend</div>
+            <div className="space-y-1.5 text-xs">
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 rounded border border-gray-300" style={{ backgroundColor: '#10b981' }} />
+                <span>Start node</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 rounded border border-gray-300" style={{ backgroundColor: '#ef4444' }} />
+                <span>End node</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 rounded border border-gray-300" style={{ backgroundColor: '#f59e0b' }} />
+                <span>Path node/edge</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 rounded border border-gray-300" style={{ backgroundColor: '#60a5fa' }} />
+                <span>Node/edge traversed</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 rounded border border-gray-300" style={{ backgroundColor: '#9ca3af' }} />
+                <span>Node not traversed</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 rounded border border-gray-300" style={{ backgroundColor: '#d4d4d4' }} />
+                <span>Edge not traversed</span>
+              </div>
             </div>
           </div>
         </div>
