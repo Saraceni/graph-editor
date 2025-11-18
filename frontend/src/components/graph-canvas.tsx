@@ -21,6 +21,7 @@ function GraphScene() {
   const selectedNodeId = useAppSelector((state) => state.graph.selectedNode);
   const selectedEdgeId = useAppSelector((state) => state.graph.selectedEdge);
   const pathfindingResult = useAppSelector((state) => state.graph.pathfindingResult);
+  const cycleResult = useAppSelector((state) => state.graph.cycleResult);
   const settings = useAppSelector((state) => state.graph.settings);
   
   const [connectionSource, setConnectionSource] = useState<string | null>(null);
@@ -129,6 +130,24 @@ function GraphScene() {
     return edgeIds;
   }, [pathfindingResult, graphState.edges]);
 
+  // Determine if we're in cycle highlighting mode (cycles active and no pathfinding)
+  const isCycleMode = Boolean(cycleResult && !pathfindingResult);
+
+  // Get cycle index for a node (returns the first selected cycle the node belongs to)
+  const getNodeCycleIndex = useMemo(() => {
+    if (!cycleResult) return () => null;
+    return (nodeId: string): number | null => {
+      const cycleIndices = cycleResult.cycleMap[nodeId] || [];
+      // Find the first selected cycle this node belongs to
+      for (const cycleIndex of cycleIndices) {
+        if (cycleResult.selectedCycles.includes(cycleIndex)) {
+          return cycleIndex;
+        }
+      }
+      return null;
+    };
+  }, [cycleResult]);
+
   return (
     <>
       <OrbitControls
@@ -151,6 +170,8 @@ function GraphScene() {
           {graphState.nodes.map((node) => {
             const isInPath = pathNodeIds.includes(node.id);
             const isVisited = visitedNodeIds.has(node.id) && !isInPath && node.id !== startNodeId && node.id !== endNodeId;
+            const cycleIndex = getNodeCycleIndex(node.id);
+            const isInSelectedCycle = cycleIndex !== null;
             return (
               <Node3D
                 key={node.id}
@@ -160,6 +181,9 @@ function GraphScene() {
                 isStartNode={node.id === startNodeId}
                 isEndNode={node.id === endNodeId}
                 isVisited={isVisited}
+                cycleIndex={cycleIndex}
+                isCycleMode={isCycleMode}
+                isInCycle={isInSelectedCycle}
                 onClick={handleNodeClick}
                 onDrag={handleNodeDrag}
                 onDragStart={() => setIsDraggingNode(true)}
@@ -177,6 +201,58 @@ function GraphScene() {
 
         const isInPath = pathEdgeIds.has(edge.id);
         const isVisited = visitedEdgeIds.has(edge.id) && !isInPath;
+        
+        // Determine if edge is part of a selected cycle
+        // An edge is in a cycle if both source and target are in the same selected cycle
+        let edgeCycleIndex: number | null = null;
+        if (cycleResult && cycleResult.selectedCycles.length > 0) {
+          const sourceCycleIndices = cycleResult.cycleMap[edge.source] || [];
+          const targetCycleIndices = cycleResult.cycleMap[edge.target] || [];
+          
+          // Find a selected cycle that contains both source and target
+          for (const cycleIndex of cycleResult.selectedCycles) {
+            if (sourceCycleIndices.includes(cycleIndex) && targetCycleIndices.includes(cycleIndex)) {
+              const cycle = cycleResult.cycles[cycleIndex];
+              // Check if this edge is actually part of the cycle (consecutive nodes in cycle)
+              // For directed edges, only check forward direction
+              // For undirected edges, check both directions
+              for (let i = 0; i < cycle.length - 1; i++) {
+                if (edge.isDirected) {
+                  // Directed: only check source -> target
+                  if (cycle[i] === edge.source && cycle[i + 1] === edge.target) {
+                    edgeCycleIndex = cycleIndex;
+                    break;
+                  }
+                } else {
+                  // Undirected: check both directions
+                  if ((cycle[i] === edge.source && cycle[i + 1] === edge.target) ||
+                      (cycle[i] === edge.target && cycle[i + 1] === edge.source)) {
+                    edgeCycleIndex = cycleIndex;
+                    break;
+                  }
+                }
+              }
+              // Also check if it's the closing edge (last to first)
+              if (edgeCycleIndex === null && cycle.length > 0) {
+                const lastIdx = cycle.length - 1;
+                if (edge.isDirected) {
+                  // Directed: only check last -> first
+                  if (cycle[lastIdx] === edge.source && cycle[0] === edge.target) {
+                    edgeCycleIndex = cycleIndex;
+                  }
+                } else {
+                  // Undirected: check both directions
+                  if ((cycle[lastIdx] === edge.source && cycle[0] === edge.target) ||
+                      (cycle[lastIdx] === edge.target && cycle[0] === edge.source)) {
+                    edgeCycleIndex = cycleIndex;
+                  }
+                }
+              }
+              if (edgeCycleIndex !== null) break;
+            }
+          }
+        }
+        const isInSelectedCycle = edgeCycleIndex !== null;
 
         return (
           <Edge3D
@@ -187,6 +263,9 @@ function GraphScene() {
             isSelected={edge.id === selectedEdgeId}
             isInPath={isInPath}
             isVisited={isVisited}
+            cycleIndex={edgeCycleIndex}
+            isCycleMode={isCycleMode}
+            isInCycle={isInSelectedCycle}
             onClick={handleEdgeClick}
             settings={settings}
           />

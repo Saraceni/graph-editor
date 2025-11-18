@@ -11,11 +11,28 @@ interface Edge3DProps {
   isSelected: boolean;
   isInPath?: boolean;
   isVisited?: boolean;
+  cycleIndex?: number | null;
+  isCycleMode?: boolean;
+  isInCycle?: boolean;
   onClick: (edgeId: string) => void;
   settings: GraphSettings;
 }
 
-export function Edge3D({ edge, sourceNode, targetNode, isSelected, isInPath, isVisited, onClick, settings }: Edge3DProps) {
+// Color palette for cycles (same as node-3d)
+const CYCLE_COLORS = [
+  '#ef4444', // red
+  '#3b82f6', // blue
+  '#10b981', // green
+  '#f59e0b', // orange
+  '#8b5cf6', // purple
+  '#ec4899', // pink
+  '#06b6d4', // cyan
+  '#84cc16', // lime
+  '#f97316', // orange-red
+  '#6366f1', // indigo
+];
+
+export function Edge3D({ edge, sourceNode, targetNode, isSelected, isInPath, isVisited, cycleIndex, isCycleMode = false, isInCycle = false, onClick, settings }: Edge3DProps) {
   const [hovered, setHovered] = useState(false);
 
   // Edge connects to node centers for visual connection
@@ -44,24 +61,43 @@ export function Edge3D({ edge, sourceNode, targetNode, isSelected, isInPath, isV
   };
 
   // Edge styling with hover effects - memoized to update when settings change
-  // Color priority: selected > path > visited > default
+  // Color priority when in cycle mode: selected > cycle color > non-cycle (dimmed)
+  // Color priority when in pathfinding mode: selected > path > visited > default
+  // Color priority when neither: selected > visited > default
+  // All edges in the same selected cycle get the same color as their nodes
+  const cycleColor = cycleIndex !== null && cycleIndex !== undefined
+    ? CYCLE_COLORS[cycleIndex % CYCLE_COLORS.length]
+    : null;
+
   const baseColor = useMemo(() => {
     return isSelected 
-      ? '#3b82f6' 
+      ? '#3b82f6' // Selected edges always blue
+      : isCycleMode
+      ? (isInCycle && cycleColor 
+          ? cycleColor // Same color for all edges in the same selected cycle
+          : '#9ca3af') // Dimmed gray for non-cycle edges
       : isInPath 
       ? '#f59e0b' // orange for path
       : isVisited 
       ? '#60a5fa' // light blue for visited
       : settings.edgeColor;
-  }, [isSelected, isInPath, isVisited, settings.edgeColor]);
+  }, [isSelected, isCycleMode, isInCycle, cycleColor, isInPath, isVisited, settings.edgeColor]);
+  
+  // Opacity for non-cycle edges in cycle mode
+  const edgeOpacity = useMemo(() => {
+    return isCycleMode && !isInCycle ? 0.3 : 1.0;
+  }, [isCycleMode, isInCycle]);
   
   const edgeColor = useMemo(() => {
     return hovered ? '#3b82f6' : baseColor;
   }, [hovered, baseColor]);
   
   const baseRadius = useMemo(() => {
-    return isSelected ? settings.edgeThickness * 1.6 : isInPath ? settings.edgeThickness * 1.2 : settings.edgeThickness;
-  }, [isSelected, isInPath, settings.edgeThickness]);
+    if (isSelected) return settings.edgeThickness * 1.6;
+    if (isInPath) return settings.edgeThickness * 1.2;
+    if (isCycleMode && !isInCycle) return settings.edgeThickness * 0.6; // Thinner for non-cycle edges
+    return settings.edgeThickness;
+  }, [isSelected, isInPath, isCycleMode, isInCycle, settings.edgeThickness]);
   
   const edgeRadius = useMemo(() => {
     return hovered ? baseRadius * 1.8 : baseRadius;
@@ -190,9 +226,11 @@ export function Edge3D({ edge, sourceNode, targetNode, isSelected, isInPath, isV
         <meshStandardMaterial 
           color={edgeColor}
           emissive={edgeColor}
-          emissiveIntensity={isSelected ? 0.3 : hovered ? 0.2 : 0.1}
+          emissiveIntensity={isSelected ? 0.3 : hovered ? 0.2 : isCycleMode && isInCycle ? 0.15 : 0.1}
           metalness={0.3}
           roughness={0.4}
+          transparent={edgeOpacity < 1.0}
+          opacity={edgeOpacity}
         />
       </mesh>
 
@@ -210,9 +248,11 @@ export function Edge3D({ edge, sourceNode, targetNode, isSelected, isInPath, isV
           <meshStandardMaterial 
             color={edgeColor}
             emissive={edgeColor}
-            emissiveIntensity={isSelected ? 0.3 : hovered ? 0.2 : 0.1}
+            emissiveIntensity={isSelected ? 0.3 : hovered ? 0.2 : isCycleMode && isInCycle ? 0.15 : 0.1}
             metalness={0.3}
             roughness={0.4}
+            transparent={edgeOpacity < 1.0}
+            opacity={edgeOpacity}
           />
         </mesh>
       )}

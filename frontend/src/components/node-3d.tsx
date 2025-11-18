@@ -11,6 +11,9 @@ interface Node3DProps {
   isStartNode?: boolean;
   isEndNode?: boolean;
   isVisited?: boolean;
+  cycleIndex?: number | null;
+  isCycleMode?: boolean;
+  isInCycle?: boolean;
   onClick: (nodeId: string) => void;
   onDrag?: (nodeId: string, position: Vector3) => void;
   onDragStart?: () => void;
@@ -19,7 +22,21 @@ interface Node3DProps {
   settings: GraphSettings;
 }
 
-export function Node3D({ node, isSelected, isInPath, isStartNode, isEndNode, isVisited, onClick, onDrag, onDragStart, onDragEnd, canDrag = false, settings }: Node3DProps) {
+// Color palette for cycles
+const CYCLE_COLORS = [
+  '#ef4444', // red
+  '#3b82f6', // blue
+  '#10b981', // green
+  '#f59e0b', // orange
+  '#8b5cf6', // purple
+  '#ec4899', // pink
+  '#06b6d4', // cyan
+  '#84cc16', // lime
+  '#f97316', // orange-red
+  '#6366f1', // indigo
+];
+
+export function Node3D({ node, isSelected, isInPath, isStartNode, isEndNode, isVisited, cycleIndex, isCycleMode = false, isInCycle = false, onClick, onDrag, onDragStart, onDragEnd, canDrag = false, settings }: Node3DProps) {
   const meshRef = useRef<Mesh>(null);
   const { raycaster, camera, pointer } = useThree();
   const [hovered, setHovered] = useState(false);
@@ -105,9 +122,20 @@ export function Node3D({ node, isSelected, isInPath, isStartNode, isEndNode, isV
 
 
 
-  // Color priority: selected > start > end > path > visited > default
+  // Color priority when in cycle mode: selected > cycle color > non-cycle (dimmed)
+  // Color priority when in pathfinding mode: selected > start > end > path > visited > default
+  // Color priority when neither: selected > visited > default
+  // All nodes in the same selected cycle get the same color based on cycle index
+  const cycleColor = cycleIndex !== null && cycleIndex !== undefined
+    ? CYCLE_COLORS[cycleIndex % CYCLE_COLORS.length]
+    : null;
+  
   const nodeColor = isSelected 
-    ? '#3b82f6' 
+    ? '#3b82f6' // Selected nodes always blue
+    : isCycleMode
+    ? (isInCycle && cycleColor 
+        ? cycleColor // Same color for all nodes in the same selected cycle
+        : '#9ca3af') // Dimmed gray for non-cycle nodes
     : isStartNode 
     ? '#10b981' // green for start
     : isEndNode 
@@ -117,7 +145,18 @@ export function Node3D({ node, isSelected, isInPath, isStartNode, isEndNode, isV
     : isVisited 
     ? '#60a5fa' // light blue for visited
     : settings.nodeColor;
-  const nodeSize = isSelected ? 0.5 : hovered ? 0.45 : 0.4;
+  
+  // In cycle mode, make non-cycle nodes smaller and less prominent
+  const nodeSize = isSelected 
+    ? 0.5 
+    : isCycleMode && !isInCycle
+    ? 0.3 // Smaller for non-cycle nodes
+    : hovered 
+    ? 0.45 
+    : 0.4;
+  
+  // Opacity for non-cycle nodes in cycle mode
+  const nodeOpacity = isCycleMode && !isInCycle ? 0.4 : 1.0;
 
   return (
     <group position={[node.position.x, node.position.y, node.position.z]} renderOrder={1}>
@@ -141,9 +180,11 @@ export function Node3D({ node, isSelected, isInPath, isStartNode, isEndNode, isV
         <meshStandardMaterial
           color={nodeColor}
           emissive={nodeColor}
-          emissiveIntensity={isSelected ? 0.3 : 0.1}
+          emissiveIntensity={isSelected ? 0.3 : isCycleMode && isInCycle ? 0.2 : 0.1}
           metalness={0.3}
           roughness={0.4}
+          transparent={nodeOpacity < 1.0}
+          opacity={nodeOpacity}
         />
       </mesh>
       {node.label && (

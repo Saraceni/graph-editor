@@ -35,6 +35,11 @@ export interface GraphState {
     startNode: string;
     endNode: string;
   } | null;
+  cycleResult?: {
+    cycles: string[][];
+    cycleMap: Record<string, number[]>;
+    selectedCycles: number[]; // Indices of selected cycles to highlight
+  } | null;
   settings: GraphSettings;
 }
 
@@ -52,6 +57,7 @@ const initialState: GraphState = {
   selectedNode: null,
   selectedEdge: null,
   pathfindingResult: null,
+    cycleResult: null,
   settings: defaultSettings,
 };
 
@@ -113,12 +119,56 @@ const graphSlice = createSlice({
     // Graph-level actions
     setPathfindingResult: (
       state,
-      action: PayloadAction<{ path: string[]; distance: number } | null>
+      action: PayloadAction<{
+        path: string[];
+        distance: number;
+        visitedNodes: string[];
+        visitedEdges: string[];
+        startNode: string;
+        endNode: string;
+      } | null>
     ) => {
       state.pathfindingResult = action.payload;
     },
     clearPathfindingResult: (state) => {
       state.pathfindingResult = null;
+    },
+    setCycleResult: (
+      state,
+      action: PayloadAction<{ cycles: string[][]; cycleMap: Record<string, number[]> } | null>
+    ) => {
+      if (action.payload) {
+        // Automatically select all cycles by default
+        state.cycleResult = {
+          ...action.payload,
+          selectedCycles: action.payload.cycles.map((_, index) => index),
+        };
+      } else {
+        state.cycleResult = null;
+      }
+    },
+    clearCycleResult: (state) => {
+      state.cycleResult = null;
+    },
+    toggleCycleSelection: (state, action: PayloadAction<number>) => {
+      if (state.cycleResult) {
+        const index = state.cycleResult.selectedCycles.indexOf(action.payload);
+        if (index === -1) {
+          state.cycleResult.selectedCycles.push(action.payload);
+        } else {
+          state.cycleResult.selectedCycles.splice(index, 1);
+        }
+      }
+    },
+    selectAllCycles: (state) => {
+      if (state.cycleResult) {
+        state.cycleResult.selectedCycles = state.cycleResult.cycles.map((_, index) => index);
+      }
+    },
+    deselectAllCycles: (state) => {
+      if (state.cycleResult) {
+        state.cycleResult.selectedCycles = [];
+      }
     },
     resetGraph: (state) => {
       state.nodes = [];
@@ -126,6 +176,7 @@ const graphSlice = createSlice({
       state.selectedNode = null;
       state.selectedEdge = null;
       state.pathfindingResult = null;
+      state.cycleResult = null;
     },
     setGraphState: (_state, action: PayloadAction<GraphState>) => {
       // Ensure settings exist when loading from storage (migration for old saved states)
@@ -155,6 +206,11 @@ export const {
   selectEdge,
   setPathfindingResult,
   clearPathfindingResult,
+  setCycleResult,
+  clearCycleResult,
+  toggleCycleSelection,
+  selectAllCycles,
+  deselectAllCycles,
   resetGraph,
   setGraphState,
   updateSettings,
