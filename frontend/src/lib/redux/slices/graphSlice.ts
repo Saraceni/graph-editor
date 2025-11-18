@@ -31,7 +31,6 @@ export interface GraphState {
     path: string[];
     distance: number;
   } | null;
-  layoutMode?: 'manual' | 'auto';
   settings: GraphSettings;
 }
 
@@ -49,7 +48,6 @@ const initialState: GraphState = {
   selectedNode: null,
   selectedEdge: null,
   pathfindingResult: null,
-  layoutMode: 'manual',
   settings: defaultSettings,
 };
 
@@ -133,9 +131,6 @@ const graphSlice = createSlice({
       };
       return newState;
     },
-    setLayoutMode: (state, action: PayloadAction<'manual' | 'auto'>) => {
-      state.layoutMode = action.payload;
-    },
     updateSettings: (state, action: PayloadAction<Partial<GraphSettings>>) => {
       state.settings = { ...state.settings, ...action.payload };
     },
@@ -158,7 +153,6 @@ export const {
   clearPathfindingResult,
   resetGraph,
   setGraphState,
-  setLayoutMode,
   updateSettings,
   resetSettings,
 } = graphSlice.actions;

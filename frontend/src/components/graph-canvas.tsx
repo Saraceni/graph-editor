@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Grid, PerspectiveCamera } from '@react-three/drei';
 import { Vector3 } from 'three';
 import { useAppDispatch, useAppSelector } from '@/lib/hooks';
@@ -10,14 +10,9 @@ import {
   addEdge as addEdgeToStore,
   removeEdge as removeEdgeFromStore,
   selectEdge,
-  setLayoutMode,
 } from '@/lib/redux/slices/graphSlice';
 import { Node3D } from './node-3d';
 import { Edge3D } from './edge-3d';
-import { ForceLayout3D } from '@/lib/3d-layout';
-import { Button } from './ui/button';
-import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
-import { Layout, Hand, Info } from 'lucide-react';
 
 // Scene component that renders the graph
 function GraphScene() {
@@ -26,13 +21,10 @@ function GraphScene() {
   const selectedNodeId = useAppSelector((state) => state.graph.selectedNode);
   const selectedEdgeId = useAppSelector((state) => state.graph.selectedEdge);
   const pathfindingResult = useAppSelector((state) => state.graph.pathfindingResult);
-  const layoutMode = useAppSelector((state) => state.graph.layoutMode || 'manual');
   const settings = useAppSelector((state) => state.graph.settings);
   
   const [connectionSource, setConnectionSource] = useState<string | null>(null);
   const [isDraggingNode, setIsDraggingNode] = useState(false);
-  const layoutRef = useRef<ForceLayout3D | null>(null);
-  const animationFrameRef = useRef<number | null>(null);
 
   // Handle keyboard shortcut for connection mode
   useEffect(() => {
@@ -58,53 +50,6 @@ function GraphScene() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [selectedNodeId, connectionSource]);
-
-
-  // Initialize layout
-  useEffect(() => {
-    if (layoutMode === 'auto' && graphState.nodes.length > 0) {
-      layoutRef.current = new ForceLayout3D(graphState.nodes, graphState.edges);
-      layoutRef.current.start();
-    } else {
-      if (layoutRef.current) {
-        layoutRef.current.destroy();
-        layoutRef.current = null;
-      }
-    }
-
-    return () => {
-      if (layoutRef.current) {
-        layoutRef.current.destroy();
-      }
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-      }
-    };
-  }, [layoutMode, graphState.nodes.length]);
-
-  // Update layout when nodes/edges change
-  useEffect(() => {
-    if (layoutRef.current && layoutMode === 'auto') {
-      layoutRef.current.update(graphState.nodes, graphState.edges);
-    }
-  }, [graphState.nodes, graphState.edges, layoutMode]);
-
-  // Run layout simulation
-  useFrame(() => {
-    if (layoutRef.current && layoutMode === 'auto') {
-      const updatedNodes = layoutRef.current.tick();
-      updatedNodes.forEach((node) => {
-        const existingNode = graphState.nodes.find((n) => n.id === node.id);
-        if (existingNode && (
-          existingNode.position.x !== node.position.x ||
-          existingNode.position.y !== node.position.y ||
-          existingNode.position.z !== node.position.z
-        )) {
-          dispatch(updateNode(node));
-        }
-      });
-    }
-  });
 
   // Handle node click
   const handleNodeClick = useCallback(
@@ -139,22 +84,20 @@ function GraphScene() {
     [dispatch]
   );
 
-  // Handle node drag (only in manual mode)
+  // Handle node drag
   const handleNodeDrag = useCallback(
     (nodeId: string, position: Vector3) => {
-      if (layoutMode === 'manual') {
-        const node = graphState.nodes.find((n) => n.id === nodeId);
-        if (node) {
-          dispatch(
-            updateNode({
-              ...node,
-              position: { x: position.x, y: position.y, z: position.z },
-            })
-          );
-        }
+      const node = graphState.nodes.find((n) => n.id === nodeId);
+      if (node) {
+        dispatch(
+          updateNode({
+            ...node,
+            position: { x: position.x, y: position.y, z: position.z },
+          })
+        );
       }
     },
-    [dispatch, graphState.nodes, layoutMode]
+    [dispatch, graphState.nodes]
   );
 
 
@@ -206,7 +149,7 @@ function GraphScene() {
                 onDrag={handleNodeDrag}
                 onDragStart={() => setIsDraggingNode(true)}
                 onDragEnd={() => setIsDraggingNode(false)}
-                canDrag={layoutMode === 'manual' && node.id === selectedNodeId}
+                canDrag={node.id === selectedNodeId}
                 settings={settings}
               />
           ))}
@@ -238,7 +181,6 @@ export function GraphCanvas() {
   const dispatch = useAppDispatch();
   const selectedNodeId = useAppSelector((state) => state.graph.selectedNode);
   const selectedEdgeId = useAppSelector((state) => state.graph.selectedEdge);
-  const layoutMode = useAppSelector((state) => state.graph.layoutMode || 'manual');
 
   // Handle keyboard shortcuts
   useEffect(() => {
@@ -267,11 +209,6 @@ export function GraphCanvas() {
     };
   }, [selectedNodeId, selectedEdgeId, dispatch]);
 
-  const toggleLayoutMode = () => {
-    const newMode = layoutMode === 'manual' ? 'auto' : 'manual';
-    dispatch(setLayoutMode(newMode));
-  };
-
   return (
     <div className="relative w-full h-full">
       <Canvas
@@ -284,68 +221,6 @@ export function GraphCanvas() {
         <PerspectiveCamera makeDefault position={[0, 0, 15]} />
         <GraphScene />
       </Canvas>
-      
-      {/* Layout mode toggle button */}
-      <div className="absolute top-4 right-4 z-10 flex flex-col gap-2">
-        <div className="flex items-center gap-2">
-          {/* Current mode indicator */}
-          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-background/80 backdrop-blur-sm rounded-md text-sm">
-            {layoutMode === 'manual' ? (
-              <>
-                <Hand className="w-4 h-4 text-primary" />
-                <span className="font-medium">Manual Mode</span>
-              </>
-            ) : (
-              <>
-                <Layout className="w-4 h-4 text-primary" />
-                <span className="font-medium">Auto Layout</span>
-              </>
-            )}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Info className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
-              </TooltipTrigger>
-              <TooltipContent side="left" className="max-w-xs">
-                {layoutMode === 'manual' ? (
-                  <div className="space-y-1">
-                    <p className="font-semibold">Manual Mode</p>
-                    <p className="text-xs">
-                      You control node positions. Drag nodes to reposition them, or set positions when creating/editing nodes.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-1">
-                    <p className="font-semibold">Auto Layout</p>
-                    <p className="text-xs">
-                      Nodes are automatically positioned using a force-directed algorithm. Connected nodes stay close, unconnected nodes repel each other.
-                    </p>
-                  </div>
-                )}
-              </TooltipContent>
-            </Tooltip>
-          </div>
-          
-          {/* Switch button */}
-          <Button
-            onClick={toggleLayoutMode}
-            variant="outline"
-            size="sm"
-            className="gap-2"
-          >
-            {layoutMode === 'manual' ? (
-              <>
-                <Layout className="w-4 h-4" />
-                Switch to Auto
-              </>
-            ) : (
-              <>
-                <Hand className="w-4 h-4" />
-                Switch to Manual
-              </>
-            )}
-          </Button>
-        </div>
-      </div>
     </div>
   );
 }
