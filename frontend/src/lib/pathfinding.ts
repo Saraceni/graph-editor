@@ -58,6 +58,7 @@ export function dijkstra(
 
     allEdges.forEach(edge => {
       const neighborId = edge.source === currentId ? edge.target : edge.source;
+      // Mark edge as visited when we explore it
       visitedEdges.add(edge.id);
       if (unvisited.has(neighborId)) {
         const weight = edge.weight || 1;
@@ -84,7 +85,7 @@ export function dijkstra(
     path,
     distance: distances[endId],
     visitedNodes: Array.from(visitedNodes),
-    visitedEdges: Array.from(visitedEdges),
+    visitedEdges: Array.from(visitedEdges), // All edges explored during algorithm
     startNode: startId,
     endNode: endId,
   };
@@ -102,6 +103,7 @@ export function bfs(
   const visited = new Set<string>();
   const visitedEdges = new Set<string>();
   const queue: string[] = [startId];
+  const discovered = new Set<string>([startId]); // Track discovered nodes
   const parent: Record<string, string | null> = {};
   parent[startId] = null;
 
@@ -123,8 +125,11 @@ export function bfs(
 
     allEdges.forEach(edge => {
       const neighborId = edge.source === currentId ? edge.target : edge.source;
+      // Mark edge as visited when we explore it
       visitedEdges.add(edge.id);
-      if (!visited.has(neighborId)) {
+      // Only set parent and add to queue if node hasn't been discovered yet
+      if (!discovered.has(neighborId)) {
+        discovered.add(neighborId);
         parent[neighborId] = currentId;
         queue.push(neighborId);
       }
@@ -145,98 +150,16 @@ export function bfs(
     path,
     distance: path.length - 1,
     visitedNodes: Array.from(visited),
-    visitedEdges: Array.from(visitedEdges),
+    visitedEdges: Array.from(visitedEdges), // All edges explored during algorithm
     startNode: startId,
     endNode: endId,
   };
 }
 
 /**
- * DFS to find all connected nodes from a start node
- */
-export function dfs(
-  _nodes: GraphNode[],
-  edges: GraphEdge[],
-  startId: string
-): string[] {
-  const visited = new Set<string>();
-  const stack: string[] = [startId];
-
-  while (stack.length > 0) {
-    const currentId = stack.pop();
-    if (!currentId || visited.has(currentId)) continue;
-
-    visited.add(currentId);
-
-    const outgoingEdges = edges.filter(e => e.source === currentId);
-    const incomingEdges = edges.filter(
-      e => e.target === currentId && !e.isDirected
-    );
-    const allEdges = [...outgoingEdges, ...incomingEdges];
-
-    allEdges.forEach(edge => {
-      const neighborId = edge.source === currentId ? edge.target : edge.source;
-      if (!visited.has(neighborId)) {
-        stack.push(neighborId);
-      }
-    });
-  }
-
-  return Array.from(visited);
-}
-
-/**
- * DFS for pathfinding from start to end node
- * Returns a path if one exists (not necessarily shortest)
- */
-export function dfsPath(
-  _nodes: GraphNode[],
-  edges: GraphEdge[],
-  startId: string,
-  endId: string
-): PathfindingResult | null {
-  const visited = new Set<string>();
-  const visitedEdges = new Set<string>();
-  const stack: { nodeId: string; path: string[] }[] = [{ nodeId: startId, path: [startId] }];
-
-  while (stack.length > 0) {
-    const { nodeId: currentId, path } = stack.pop()!;
-    
-    if (visited.has(currentId)) continue;
-    visited.add(currentId);
-
-    if (currentId === endId) {
-      return {
-        path,
-        distance: path.length - 1,
-        visitedNodes: Array.from(visited),
-        visitedEdges: Array.from(visitedEdges),
-        startNode: startId,
-        endNode: endId,
-      };
-    }
-
-    // Find neighbors
-    const outgoingEdges = edges.filter(e => e.source === currentId);
-    const incomingEdges = edges.filter(
-      e => e.target === currentId && !e.isDirected
-    );
-    const allEdges = [...outgoingEdges, ...incomingEdges];
-
-    allEdges.forEach(edge => {
-      const neighborId = edge.source === currentId ? edge.target : edge.source;
-      visitedEdges.add(edge.id);
-      if (!visited.has(neighborId)) {
-        stack.push({ nodeId: neighborId, path: [...path, neighborId] });
-      }
-    });
-  }
-
-  return null;
-}
-
-/**
- * Cycle Detection - Finds all cycles in a directed graph
+ * Cycle Detection - Finds all cycles in a graph
+ * Works with both directed and undirected edges
+ * Undirected edges are treated as bidirectional connections
  * Returns all cycles found in the graph
  */
 export interface CycleResult {
@@ -248,18 +171,24 @@ export function findCycles(
   nodes: GraphNode[],
   edges: GraphEdge[]
 ): CycleResult {
-  // Only consider directed edges for cycle detection
-  const directedEdges = edges.filter(e => e.isDirected);
-  
   // Build adjacency list
+  // For directed edges: only add source -> target
+  // For undirected edges: add both directions (source -> target and target -> source)
   const adjList: Record<string, string[]> = {};
   
   nodes.forEach(node => {
     adjList[node.id] = [];
   });
   
-  directedEdges.forEach(edge => {
-    adjList[edge.source].push(edge.target);
+  edges.forEach(edge => {
+    if (edge.isDirected) {
+      // Directed edge: only one direction
+      adjList[edge.source].push(edge.target);
+    } else {
+      // Undirected edge: both directions
+      adjList[edge.source].push(edge.target);
+      adjList[edge.target].push(edge.source);
+    }
   });
   
   const cycles: string[][] = [];

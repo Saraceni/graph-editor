@@ -203,7 +203,7 @@ function GraphAppContent({ activePanel, setActivePanel }: { activePanel: PanelTy
                         <h3 className="font-semibold text-lg mb-2">Pathfinding Sample</h3>
                         <p className="text-sm text-muted-foreground mb-3">
                           Optimized for pathfinding algorithms. Contains more nodes with 
-                          less distribution, ideal for testing shortest path algorithms like Dijkstra, BFS, and DFS.
+                          less distribution, ideal for testing shortest path algorithms like Dijkstra and BFS.
                         </p>
                         <div className="text-xs text-muted-foreground">
                           <div>Best for: Shortest Path Algorithms</div>

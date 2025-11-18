@@ -3,13 +3,7 @@ import { useAppDispatch, useAppSelector } from '@/lib/hooks';
 import { addEdge, removeEdge, selectEdge } from '@/lib/redux/slices/graphSlice';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Combobox } from '@/components/ui/combobox';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Trash2, Plus, ArrowLeftRight } from 'lucide-react';
 import { toast } from 'sonner';
@@ -82,48 +76,39 @@ export function EdgePanel() {
         <div className="space-y-3 border-b pb-4 shrink-0">
           <h3 className="text-sm font-semibold">Add Edge</h3>
           <div className="space-y-3">
-            <div className="flex gap-2 items-center w-full">
-              <div className="flex-1 min-w-0">
-                <Select value={sourceNode} onValueChange={setSourceNode}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Source node" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {nodes.map(node => (
-                      <SelectItem key={node.id} value={node.id}>
-                        {node.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+            <div className="flex flex-col gap-2 items-center w-full">
+              <div className="flex flex-col w-full">
+                <label htmlFor="source-node" className="text-sm font-medium">{isDirected ? 'From' : 'Between'}</label>
+                <Combobox
+                  options={nodes.map(node => ({ value: node.id, label: node.label }))}
+                  value={sourceNode}
+                  onValueChange={setSourceNode}
+                  placeholder="Source node"
+                  searchPlaceholder="Search for source node..."
+                />
               </div>
-              {isDirected && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleSwapDirection}
-                  className="shrink-0"
-                  title="Swap direction"
-                >
-                  <ArrowLeftRight className="w-4 h-4" />
-                </Button>
-              )}
-              <div className="flex-1 min-w-0">
-                <Select value={targetNode} onValueChange={setTargetNode}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Target node" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {nodes.map(node => (
-                      <SelectItem key={node.id} value={node.id}>
-                        {node.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <div className="flex flex-col w-full">
+                <label htmlFor="source-node" className="text-sm font-medium">{isDirected ? 'To' : 'And'}</label>
+                <Combobox
+                  options={nodes.map(node => ({ value: node.id, label: node.label }))}
+                  value={targetNode}
+                  onValueChange={setTargetNode}
+                  placeholder="Target node"
+                  searchPlaceholder="Search for target node..."
+                />
               </div>
             </div>
-
+            {isDirected && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSwapDirection}
+                className="w-full"
+                title="Swap direction"
+              >
+                <ArrowLeftRight className="w-4 h-4" />
+              </Button>
+            )}
             <div className="space-y-1.5">
               <label htmlFor="add-weight" className="text-sm font-medium">
                 Weight (optional)
@@ -167,11 +152,10 @@ export function EdgePanel() {
               return (
                 <div
                   key={edge.id}
-                  className={`flex items-center justify-between p-2 rounded border cursor-pointer transition ${
-                    selectedEdge === edge.id
-                      ? 'bg-primary text-primary-foreground border-primary'
-                      : 'bg-secondary border-border hover:bg-muted'
-                  }`}
+                  className={`flex items-center justify-between p-2 rounded border cursor-pointer transition ${selectedEdge === edge.id
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'bg-secondary border-border hover:bg-muted'
+                    }`}
                   onClick={() => handleSelectEdge(edge.id)}
                 >
                   <span className="text-xs font-medium">

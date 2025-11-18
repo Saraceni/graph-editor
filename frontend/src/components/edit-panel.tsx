@@ -3,13 +3,7 @@ import { useAppDispatch, useAppSelector } from '@/lib/hooks';
 import { updateNode, updateEdge, removeNode, removeEdge, selectNode, selectEdge } from '@/lib/redux/slices/graphSlice';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Combobox } from '@/components/ui/combobox';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ArrowLeftRight, Edit, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -255,50 +249,38 @@ export function EditPanel() {
         ) : currentEdge ? (
           // Edge editing form
           <div className="space-y-4">
-            <div className="flex gap-2 items-center w-full">
-              <div className="flex-1 min-w-0 space-y-1.5">
+            <div className="flex flex-col gap-2 items-center w-full">
+              <div className="flex flex-col w-full">
                 <label className="text-sm font-medium">Source Node</label>
-                <Select value={sourceNode} onValueChange={setSourceNode}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Source node" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {nodes.map(node => (
-                      <SelectItem key={node.id} value={node.id}>
-                        {node.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Combobox
+                  options={nodes.map(node => ({ value: node.id, label: node.label }))}
+                  value={sourceNode}
+                  onValueChange={setSourceNode}
+                  placeholder="Source node"
+                  searchPlaceholder="Search for source node..."
+                />
+              </div>
+              <div className="flex flex-col w-full">
+                <label className="text-sm font-medium">Target Node</label>
+                <Combobox
+                  options={nodes.map(node => ({ value: node.id, label: node.label }))}
+                  value={targetNode}
+                  onValueChange={setTargetNode}
+                  placeholder="Target node"
+                  searchPlaceholder="Search for target node..."
+                />
               </div>
               {isDirected && (
-                <div className="pt-6">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleSwapDirection}
-                    className="shrink-0"
-                    title="Swap direction"
-                  >
-                    <ArrowLeftRight className="w-4 h-4" />
-                  </Button>
-                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleSwapDirection}
+                  className="w-full"
+                  title="Swap direction"
+                >
+                  <ArrowLeftRight className="w-4 h-4" />
+                </Button>
               )}
-              <div className="flex-1 min-w-0 space-y-1.5">
-                <label className="text-sm font-medium">Target Node</label>
-                <Select value={targetNode} onValueChange={setTargetNode}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Target node" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {nodes.map(node => (
-                      <SelectItem key={node.id} value={node.id}>
-                        {node.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
             </div>
 
             <div className="space-y-1.5">

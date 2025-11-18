@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useAppDispatch, useAppSelector } from '@/lib/hooks';
 import { setPathfindingResult, clearPathfindingResult, setCycleResult, clearCycleResult, toggleCycleSelection, selectAllCycles, deselectAllCycles } from '@/lib/redux/slices/graphSlice';
-import { dijkstra, bfs, dfsPath, findCycles } from '@/lib/pathfinding';
+import { dijkstra, bfs, findCycles } from '@/lib/pathfinding';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -10,11 +10,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Combobox } from '@/components/ui/combobox';
 import { Checkbox } from '@/components/ui/checkbox';
 import { AlertCircle, Waypoints } from 'lucide-react';
 
 type AlgorithmMode = 'shortest-path' | 'cycle-detection';
-type PathAlgorithm = 'dijkstra' | 'bfs' | 'dfs';
+type PathAlgorithm = 'dijkstra' | 'bfs';
 
 export function PathfindingPanel() {
   const dispatch = useAppDispatch();
@@ -49,8 +50,6 @@ export function PathfindingPanel() {
         result = dijkstra(graphState.nodes, graphState.edges, startNode, endNode);
       } else if (pathAlgorithm === 'bfs') {
         result = bfs(graphState.nodes, graphState.edges, startNode, endNode);
-      } else if (pathAlgorithm === 'dfs') {
-        result = dfsPath(graphState.nodes, graphState.edges, startNode, endNode);
       }
 
       if (result && result.path) {
@@ -61,10 +60,9 @@ export function PathfindingPanel() {
         dispatch(clearPathfindingResult());
       }
     } else if (mode === 'cycle-detection') {
-      // Check if graph has directed edges
-      const hasDirectedEdges = graphState.edges.some(e => e.isDirected);
-      if (!hasDirectedEdges) {
-        setError('Cycle detection requires at least one directed edge');
+      // Check if graph has any edges (directed or undirected)
+      if (graphState.edges.length === 0) {
+        setError('Cycle detection requires at least one edge');
         return;
       }
 
@@ -90,7 +88,7 @@ export function PathfindingPanel() {
       </h2>
       <div className="flex-1 flex flex-col gap-4 min-h-0">
         <div className="space-y-3 shrink-0">
-          <div>
+          <div className="w-full">
             <label className="text-sm font-medium">Algorithm Mode</label>
             <Select value={mode} onValueChange={(value) => {
               setMode(value as AlgorithmMode);
@@ -98,7 +96,7 @@ export function PathfindingPanel() {
               dispatch(clearCycleResult());
               setError(null);
             }}>
-              <SelectTrigger>
+              <SelectTrigger className="w-full">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -113,42 +111,37 @@ export function PathfindingPanel() {
               <div>
                 <label className="text-sm font-medium">Path Algorithm</label>
                 <Select value={pathAlgorithm} onValueChange={setPathAlgorithm as any}>
-                  <SelectTrigger>
+                  <SelectTrigger className="w-full">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="dijkstra">Dijkstra (Weighted)</SelectItem>
                     <SelectItem value="bfs">BFS (Unweighted)</SelectItem>
-                    <SelectItem value="dfs">DFS (Connectivity)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
-              <Select value={startNode} onValueChange={setStartNode}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Start node" />
-                </SelectTrigger>
-                <SelectContent>
-                  {nodes.map(node => (
-                    <SelectItem key={node.id} value={node.id}>
-                      {node.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div>
+                <label className="text-sm font-medium">Start Node</label>
+                <Combobox
+                  options={nodes.map(node => ({ value: node.id, label: node.label }))}
+                  value={startNode}
+                  onValueChange={setStartNode}
+                  placeholder="Start node"
+                  searchPlaceholder="Search for start node..."
+                />
+              </div>
 
-              <Select value={endNode} onValueChange={setEndNode}>
-                <SelectTrigger>
-                  <SelectValue placeholder="End node" />
-                </SelectTrigger>
-                <SelectContent>
-                  {nodes.map(node => (
-                    <SelectItem key={node.id} value={node.id}>
-                      {node.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div>
+                <label className="text-sm font-medium">End Node</label>
+                <Combobox
+                  options={nodes.map(node => ({ value: node.id, label: node.label }))}
+                  value={endNode}
+                  onValueChange={setEndNode}
+                  placeholder="End node"
+                  searchPlaceholder="Search for end node..."
+                />
+              </div>
             </>
           )}
 
@@ -251,7 +244,7 @@ export function PathfindingPanel() {
                               style={{ backgroundColor: isSelected ? color : '#9ca3af' }}
                             />
                             <div className="font-semibold">
-                              Cycle {index + 1} ({cycle.length} node{cycle.length !== 1 ? 's' : ''})
+                              Cycle {index + 1} ({cycle.length - 1} node{cycle.length !== 1 ? 's' : ''})
                             </div>
                           </div>
                           <div className="font-mono text-xs text-muted-foreground">
