@@ -5,7 +5,7 @@ and saving/loading the graph for later use.
 
 ## Description
 
-Create, edit and remove nodes and edges. Search for nodes and edges. Support for directed and wighted graphs. Run pathfinding algorithms and visualise all the nodes and edges trasversed and the path for node and source destination. Configure how your editor looks: change colors of nodes, edges and labels and edge thickness.
+Create, edit and remove nodes and edges. Search for nodes and edges. Support for directed and wighted graphs. Run pathfinding algorithms and visualise all the nodes and edges trasversed and the path for node and source destination. Configure how your editor looks: change colors of nodes, edges and labels and edge thickness. Collaborate in real-time with other users.
 
 ## Getting started
 
@@ -76,7 +76,7 @@ For future implementation, when a user runs a graph algorithm (like BFS or Dijks
 - Built with `express` and `ws`
 - CORS support with `cors` and `@types/cors`
 
-### 2. Create Backend
+### 2. Backend Structure
 
 - `src/index.ts` - Main server entry point
 - `src/types/graph.ts` - Shared TypeScript types for GraphNode and GraphEdge (matching frontend)
@@ -85,8 +85,8 @@ For future implementation, when a user runs a graph algorithm (like BFS or Dijks
 
 ### 3. Shared State Management
 
-- In-memory shared state store containing only `nodes` and `edges` arrays
-- Track connected clients
+- In-memory shared state store containing `nodes` and `edges` arrays
+- Connected clients tracking
 - When first client connects: initialize shared state with their graph state
 - When subsequent clients connect: send them current shared state
 - Broadcast state changes to all connected clients (except sender)
