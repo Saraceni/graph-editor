@@ -27,7 +27,7 @@ export function PathfindingPanel() {
   const [mode, setMode] = useState<AlgorithmMode>('shortest-path');
   const [startNode, setStartNode] = useState('');
   const [endNode, setEndNode] = useState('');
-  const [pathAlgorithm, setPathAlgorithm] = useState<PathAlgorithm>('dijkstra');
+  const [pathAlgorithm, setPathAlgorithm] = useState<PathAlgorithm>('astar');
   const [error, setError] = useState<string | null>(null);
 
   const handleRunAlgorithm = () => {

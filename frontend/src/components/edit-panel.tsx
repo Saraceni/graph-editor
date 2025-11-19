@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Combobox } from '@/components/ui/combobox';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ArrowLeftRight, Edit, Trash2 } from 'lucide-react';
+import { ArrowLeftRight, Edit, Trash2, Info } from 'lucide-react';
 import { toast } from 'sonner';
 
 export function EditPanel() {
@@ -25,7 +25,7 @@ export function EditPanel() {
   const [weight, setWeight] = useState('');
   const [isDirected, setIsDirected] = useState(true);
 
-  // Sync node form when node selection changes (not when nodes array changes)
+  // Sync node form when node selection changes or node position is updated
   useEffect(() => {
     if (selectedNode) {
       const node = nodes.find(n => n.id === selectedNode);
@@ -41,8 +41,7 @@ export function EditPanel() {
       setNodeLabel('');
       setNodePosition({ x: '0', y: '0', z: '0' });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedNode]);
+  }, [selectedNode, nodes]);
 
   // Sync edge form when edge selection changes (not when edges array changes)
   useEffect(() => {
@@ -227,6 +226,10 @@ export function EditPanel() {
                   onChange={e => setNodePosition({ ...nodePosition, z: e.target.value })}
                 />
               </div>
+              <p className="text-xs text-muted-foreground flex items-center gap-2 bg-muted p-2 rounded-md">
+                <Info className="w-5 h-5" />
+                You can drag the selected node to change its position
+              </p>
             </div>
 
             <div className="text-xs text-muted-foreground">
