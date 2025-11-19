@@ -1,15 +1,16 @@
 import { WebSocketServer, WebSocket } from 'ws';
+import * as Y from 'yjs';
 import { SharedGraphState, GraphNode, GraphEdge, WebSocketMessage } from './types/graph';
 
 class CollaborationServer {
   private wss: WebSocketServer;
-  private sharedState: SharedGraphState;
+  private doc: Y.Doc;
   private clients: Set<WebSocket>;
   private isInitialized: boolean;
 
   constructor(server: any) {
     this.wss = new WebSocketServer({ server, path: '/ws' });
-    this.sharedState = { nodes: [], edges: [] };
+    this.doc = new Y.Doc();
     this.clients = new Set();
     this.isInitialized = false;
 
@@ -40,7 +41,7 @@ class CollaborationServer {
         // If no clients are connected, reset the shared state
         if (this.clients.size === 0) {
           console.log('No clients connected, resetting shared state');
-          this.sharedState = { nodes: [], edges: [] };
+          this.doc = new Y.Doc();
           this.isInitialized = false;
         }
       });
@@ -82,76 +83,179 @@ class CollaborationServer {
   }
 
   private handleJoin(ws: WebSocket, clientState: SharedGraphState | null) {
-    // If this is the only client (or first after reset), use their state
-    // If shared state is not initialized and client has state, use their state
-    if (!this.isInitialized && clientState) {
-      this.sharedState = {
-        nodes: [...clientState.nodes],
-        edges: [...clientState.edges],
-      };
+    if (!clientState) {
+      // Send current shared state even if client has no state
+      const currentState = this.getStateFromDoc();
+      this.sendMessage(ws, {
+        type: 'STATE_SYNC',
+        payload: currentState,
+      });
+      return;
+    }
+
+    let stateWasMerged = false;
+
+    if (!this.isInitialized) {
+      // First client: initialize Y.Doc with their state
+      this.initializeDocWithState(clientState);
       this.isInitialized = true;
-      console.log('Shared state initialized with client\'s state');
-    } else if (this.clients.size === 1 && clientState) {
-      // If this is the only client and shared state was reset, use their state
-      this.sharedState = {
-        nodes: [...clientState.nodes],
-        edges: [...clientState.edges],
-      };
-      this.isInitialized = true;
-      console.log('Shared state replaced with only client\'s state');
+      console.log(`Shared state initialized with first client's state: ${clientState.nodes.length} nodes, ${clientState.edges.length} edges`);
+    } else {
+      // Subsequent client: merge their state into existing Y.Doc
+      const stateBeforeMerge = this.getStateFromDoc();
+      this.mergeStateIntoDoc(clientState);
+      const stateAfterMerge = this.getStateFromDoc();
+      stateWasMerged = true;
+      console.log(`Merged new client's state into shared state. Before: ${stateBeforeMerge.nodes.length} nodes, ${stateBeforeMerge.edges.length} edges. After: ${stateAfterMerge.nodes.length} nodes, ${stateAfterMerge.edges.length} edges. Client had: ${clientState.nodes.length} nodes, ${clientState.edges.length} edges`);
     }
 
     // Send current shared state to the new client
+    const currentState = this.getStateFromDoc();
     this.sendMessage(ws, {
       type: 'STATE_SYNC',
-      payload: this.sharedState,
+      payload: currentState,
+    });
+
+    // If state was merged, broadcast the merged state to all other clients
+    if (stateWasMerged) {
+      this.broadcast({
+        type: 'STATE_SYNC',
+        payload: currentState,
+      }, ws);
+    }
+  }
+
+  private initializeDocWithState(state: SharedGraphState) {
+    // Use Y.js transaction to ensure atomic initialization
+    this.doc.transact(() => {
+      const nodesMap = this.doc.getMap('nodes');
+      const edgesMap = this.doc.getMap('edges');
+
+      // Clear existing state
+      nodesMap.clear();
+      edgesMap.clear();
+
+      // Add all nodes
+      state.nodes.forEach((node) => {
+        // Create a fresh copy to ensure proper serialization
+        nodesMap.set(node.id, { ...node });
+      });
+
+      // Add all edges
+      state.edges.forEach((edge) => {
+        // Create a fresh copy to ensure proper serialization
+        edgesMap.set(edge.id, { ...edge });
+      });
     });
   }
 
+  private mergeStateIntoDoc(state: SharedGraphState) {
+    // Use Y.js transaction to ensure atomic merge
+    this.doc.transact(() => {
+      const nodesMap = this.doc.getMap('nodes');
+      const edgesMap = this.doc.getMap('edges');
+
+      // Merge nodes: Y.js will handle conflicts (same ID = last write wins)
+      state.nodes.forEach((node) => {
+        // Create a fresh copy to ensure proper serialization
+        nodesMap.set(node.id, { ...node });
+      });
+
+      // Merge edges: Y.js will handle conflicts (same ID = last write wins)
+      state.edges.forEach((edge) => {
+        // Create a fresh copy to ensure proper serialization
+        edgesMap.set(edge.id, { ...edge });
+      });
+    });
+  }
+
+  private getStateFromDoc(): SharedGraphState {
+    const nodesMap = this.doc.getMap('nodes');
+    const edgesMap = this.doc.getMap('edges');
+
+    const nodes: GraphNode[] = [];
+    const edges: GraphEdge[] = [];
+
+    // Convert Y.Map to arrays - forEach signature is (value, key)
+    nodesMap.forEach((node) => {
+      if (node) {
+        nodes.push(node as GraphNode);
+      }
+    });
+
+    edgesMap.forEach((edge) => {
+      if (edge) {
+        edges.push(edge as GraphEdge);
+      }
+    });
+
+    return { nodes, edges };
+  }
+
   private handleNodeAdd(node: GraphNode) {
+    const nodesMap = this.doc.getMap('nodes');
     // Check if node already exists
-    if (!this.sharedState.nodes.find(n => n.id === node.id)) {
-      this.sharedState.nodes.push(node);
+    if (!nodesMap.has(node.id)) {
+      nodesMap.set(node.id, node);
       this.broadcast({ type: 'NODE_ADD', payload: node }, null);
     }
   }
 
   private handleNodeUpdate(node: GraphNode) {
-    const index = this.sharedState.nodes.findIndex(n => n.id === node.id);
-    if (index !== -1) {
-      this.sharedState.nodes[index] = node;
+    const nodesMap = this.doc.getMap('nodes');
+    if (nodesMap.has(node.id)) {
+      nodesMap.set(node.id, node);
       this.broadcast({ type: 'NODE_UPDATE', payload: node }, null);
     }
   }
 
   private handleNodeRemove(nodeId: string) {
-    this.sharedState.nodes = this.sharedState.nodes.filter(n => n.id !== nodeId);
-    // Also remove edges connected to this node
-    this.sharedState.edges = this.sharedState.edges.filter(
-      e => e.source !== nodeId && e.target !== nodeId
-    );
-    this.broadcast({ type: 'NODE_REMOVE', payload: nodeId }, null);
+    const nodesMap = this.doc.getMap('nodes');
+    const edgesMap = this.doc.getMap('edges');
+    
+    if (nodesMap.has(nodeId)) {
+      nodesMap.delete(nodeId);
+      
+      // Also remove edges connected to this node
+      const edgesToRemove: string[] = [];
+      edgesMap.forEach((edge, edgeId) => {
+        const e = edge as GraphEdge;
+        if (e.source === nodeId || e.target === nodeId) {
+          edgesToRemove.push(edgeId);
+        }
+      });
+      
+      edgesToRemove.forEach((edgeId) => {
+        edgesMap.delete(edgeId);
+      });
+      
+      this.broadcast({ type: 'NODE_REMOVE', payload: nodeId }, null);
+    }
   }
 
   private handleEdgeAdd(edge: GraphEdge) {
+    const edgesMap = this.doc.getMap('edges');
     // Check if edge already exists
-    if (!this.sharedState.edges.find(e => e.id === edge.id)) {
-      this.sharedState.edges.push(edge);
+    if (!edgesMap.has(edge.id)) {
+      edgesMap.set(edge.id, edge);
       this.broadcast({ type: 'EDGE_ADD', payload: edge }, null);
     }
   }
 
   private handleEdgeUpdate(edge: GraphEdge) {
-    const index = this.sharedState.edges.findIndex(e => e.id === edge.id);
-    if (index !== -1) {
-      this.sharedState.edges[index] = edge;
+    const edgesMap = this.doc.getMap('edges');
+    if (edgesMap.has(edge.id)) {
+      edgesMap.set(edge.id, edge);
       this.broadcast({ type: 'EDGE_UPDATE', payload: edge }, null);
     }
   }
 
   private handleEdgeRemove(edgeId: string) {
-    this.sharedState.edges = this.sharedState.edges.filter(e => e.id !== edgeId);
-    this.broadcast({ type: 'EDGE_REMOVE', payload: edgeId }, null);
+    const edgesMap = this.doc.getMap('edges');
+    if (edgesMap.has(edgeId)) {
+      edgesMap.delete(edgeId);
+      this.broadcast({ type: 'EDGE_REMOVE', payload: edgeId }, null);
+    }
   }
 
   private broadcast(message: WebSocketMessage, excludeClient: WebSocket | null) {

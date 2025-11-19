@@ -10,7 +10,7 @@ Create, edit and remove nodes and edges. Search for nodes and edges. Support for
 ## Getting started
 
 ### Dependencies
-This projects relies on [React 19](https://react.dev/blog/2024/12/05/react-19), [Vite](https://vite.dev/), [Tailwind CSS](https://tailwindcss.com/), [Shadcn](https://ui.shadcn.com/) and [Three.js](https://threejs.org/) for it's core functionality.
+This projects relies on [React 19](https://react.dev/blog/2024/12/05/react-19), [Vite](https://vite.dev/), [Tailwind CSS](https://tailwindcss.com/), [Shadcn](https://ui.shadcn.com/) and [Three.js](https://threejs.org/) for it's core functionality on the frontend. The backend is based on [Node.js](https://nodejs.org/), and [ws](https://www.npmjs.com/package/ws) for websocket. Both were written using [Tyepscript](https://www.typescriptlang.org/).
 
 
 ### Installing
@@ -22,7 +22,7 @@ For installing the frontend dependencies, first you need to enter the frontend f
 cd frontend
 ```
 
-Once you are on the frontend project you can run:
+Once you are on the frontend project, to install the dependencies you run:
 
 ```
 npm install
@@ -32,6 +32,40 @@ After the installation succeds you can run the project:
 
 ```
 npm run dev
+```
+
+#### Backend
+For installing the frontend dependencies, first you need to enter the backend folder from the root of the project:
+
+```
+cd backend
+```
+
+Once you are on the backend project, to install the dependencies you run:
+
+```
+npm install
+```
+
+If you you want your backend in dev mode you use the dev script:
+
+```
+npm run dev
+```
+
+This way any changes you make on the backend file will be live instantly. Otherwise you can build your project and run the build version.
+
+To build the backend project you just run:
+
+
+```
+npm run build
+```
+
+To run the built version you run this script:
+
+```
+npm run start
 ```
 
 ## Graph Representation Rationale
@@ -88,7 +122,7 @@ For future implementation, when a user runs a graph algorithm (like BFS or Dijks
 - In-memory shared state store containing `nodes` and `edges` arrays
 - Connected clients tracking
 - When first client connects: initialize shared state with their graph state
-- When subsequent clients connect: send them current shared state
+- When subsequent clients connect: conflict-free merging with [Y.js](https://yjs.dev/) along with all updates
 - Broadcast state changes to all connected clients (except sender)
 
 ### 4. WebSocket Message Protocol
@@ -124,5 +158,5 @@ For future implementation, when a user runs a graph algorithm (like BFS or Dijks
 
 - On collaboration start: send current nodes/edges to server
 - On collaboration stop: disconnect WebSocket, continue local-only mode
-- Handle incoming updates: merge remote changes into local state
+- Handle incoming updates: merge remote changes into shared state using [Y.js](https://yjs.dev/)
 - Simple conflict resolution: last write wins (server broadcasts to all)
