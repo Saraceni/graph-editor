@@ -66,3 +66,63 @@ const graphState = {
 While the Node/Edge List is great for the UI, it's often inefficient for pure algorithm execution (like pathfinding, traversals, or cycle detection).
 
 For future implementation, when a user runs a graph algorithm (like BFS or Dijkstra's), it could be pre-processed or derived a classical Adjacency List to ensure the algorithm runs with the most efficient _O(|V| + |E|)_ complexity.
+
+# Real-time Collaboration
+
+## Backend Setup
+
+### 1. Dependencies
+
+- Built with `express` and `ws`
+- CORS support with `cors` and `@types/cors`
+
+### 2. Create Backend
+
+- `src/index.ts` - Main server entry point
+- `src/types/graph.ts` - Shared TypeScript types for GraphNode and GraphEdge (matching frontend)
+- `src/server.ts` - Express server setup
+- `src/websocket.ts` - WebSocket server and state management
+
+### 3. Shared State Management
+
+- In-memory shared state store containing only `nodes` and `edges` arrays
+- Track connected clients
+- When first client connects: initialize shared state with their graph state
+- When subsequent clients connect: send them current shared state
+- Broadcast state changes to all connected clients (except sender)
+
+### 4. WebSocket Message Protocol
+
+- `JOIN` - Client connects, sends their current state
+- `STATE_SYNC` - Server sends current shared state to new client
+- `NODE_ADD` - Add node operation
+- `NODE_UPDATE` - Update node operation  
+- `NODE_REMOVE` - Remove node operation
+- `EDGE_ADD` - Add edge operation
+- `EDGE_UPDATE` - Update edge operation
+- `EDGE_REMOVE` - Remove edge operation
+- `FULL_STATE` - Full state update (for initial sync)
+
+## Frontend Setup
+
+### 1. WebSocket Client Hook
+
+- WebSocket client utilities - `src/lib/collaboration.ts`
+- React hook for managing collaboration state - `src/hooks/use-collaboration.ts`
+- Handle connection, disconnection, sending/receiving messages
+- Integrate with Redux to dispatch actions on remote changes
+
+### 2. Redux Integration
+
+- ListenerMiddleware to intercept Redux actions for nodes/edges
+- When collaboration is active:
+- Send local changes (add/update/remove node/edge) to server via WebSocket
+- Apply remote changes received from server to local Redux store
+- Only sync nodes and edges (ignore selections, pathfinding results, settings)
+
+### 3. State Synchronization Logic
+
+- On collaboration start: send current nodes/edges to server
+- On collaboration stop: disconnect WebSocket, continue local-only mode
+- Handle incoming updates: merge remote changes into local state
+- Simple conflict resolution: last write wins (server broadcasts to all)

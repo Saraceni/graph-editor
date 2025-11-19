@@ -12,7 +12,8 @@ import { EditPanel } from '@/components/edit-panel';
 import { SettingsPanel } from '@/components/settings-panel';
 import { PanelNavbar } from '@/components/panel-navbar';
 import { Button } from '@/components/ui/button';
-import { Download, Upload, Trash2, FileText } from 'lucide-react';
+import { Download, Upload, Trash2, FileText, Network } from 'lucide-react';
+import { useCollaboration } from '@/hooks/use-collaboration';
 import { Toaster } from "@/components/ui/sonner"
 import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
@@ -48,6 +49,7 @@ function GraphAppContent({
   const selectedEdge = useSelector((state: any) => state.graph.selectedEdge);
   const [isMounted, setIsMounted] = useState(false);
   const [sampleSheetOpen, setSampleSheetOpen] = useState(false);
+  const { isConnected, isCollaborating, startCollaboration, stopCollaboration } = useCollaboration();
 
   // Load graph from storage on mount
   useEffect(() => {
@@ -263,6 +265,16 @@ function GraphAppContent({
             >
               <Upload className="w-4 h-4" />
               Import
+            </Button>
+            <Button
+              size="sm"
+              variant={isConnected ? "default" : isCollaborating ? "secondary" : "outline"}
+              onClick={isCollaborating ? stopCollaboration : startCollaboration}
+              className={`gap-2 ${isConnected ? 'bg-green-600 hover:bg-green-700 text-white' : ''}`}
+              title={isCollaborating ? (isConnected ? "Stop collaboration" : "Connecting to server...") : "Start real-time collaboration"}
+            >
+              <Network className={`w-4 h-4 ${isConnected ? 'text-white' : isCollaborating ? 'text-yellow-500' : ''}`} />
+              {isCollaborating ? (isConnected ? 'Connected' : 'Connecting...') : 'Collaborate'}
             </Button>
             <Button
               size="sm"
