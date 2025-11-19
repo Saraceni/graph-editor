@@ -5,7 +5,9 @@ and saving/loading the graph for later use.
 
 ## Description
 
-Create, edit and remove nodes and edges. Search for nodes and edges. Support for directed and wighted graphs. Run pathfinding algorithms and visualise all the nodes and edges trasversed and the path for node and source destination. Configure how your editor looks: change colors of nodes, edges and labels and edge thickness. Collaborate in real-time with other users.
+Create, edit and remove nodes and edges. Search for nodes and edges. Support for directed and wighted graphs. Run pathfinding algorithms and visualise all the nodes and edges trasversed and the path for node and source destination. Configure how your editor looks: change colors of nodes, edges and labels and edge thickness. Collaborate in real-time with other users. Export your graph data or import new data. Load samples of data to try the algorithms.
+
+![App Preview](./app_preview.png)
 
 ## Getting started
 
