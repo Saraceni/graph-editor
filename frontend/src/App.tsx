@@ -20,7 +20,28 @@ import { Card } from '@/components/ui/card';
 
 type PanelType = 'nodes' | 'edges' | 'search' | 'graph-algorithms' | 'edit' | 'settings';
 
-function GraphAppContent({ activePanel, setActivePanel }: { activePanel: PanelType, setActivePanel: (panel: PanelType) => void }) {
+type AlgorithmMode = 'shortest-path' | 'cycle-detection';
+type PathAlgorithm = 'dijkstra' | 'bfs' | 'astar';
+
+interface PathfindingPanelState {
+  mode: AlgorithmMode;
+  startNode: string;
+  endNode: string;
+  pathAlgorithm: PathAlgorithm;
+  error: string | null;
+}
+
+function GraphAppContent({ 
+  activePanel, 
+  setActivePanel,
+  pathfindingState,
+  setPathfindingState
+}: { 
+  activePanel: PanelType;
+  setActivePanel: (panel: PanelType) => void;
+  pathfindingState: PathfindingPanelState;
+  setPathfindingState: (state: PathfindingPanelState | ((prev: PathfindingPanelState) => PathfindingPanelState)) => void;
+}) {
   const dispatch = useDispatch();
   const graphState = useSelector((state: any) => state.graph);
   const selectedNode = useSelector((state: any) => state.graph.selectedNode);
@@ -125,7 +146,18 @@ function GraphAppContent({ activePanel, setActivePanel }: { activePanel: PanelTy
       case 'search':
         return <SearchPanel />;
       case 'graph-algorithms':
-        return <PathfindingPanel />;
+        return <PathfindingPanel 
+          mode={pathfindingState.mode}
+          setMode={(mode) => setPathfindingState(prev => ({ ...prev, mode }))}
+          startNode={pathfindingState.startNode}
+          setStartNode={(startNode) => setPathfindingState(prev => ({ ...prev, startNode }))}
+          endNode={pathfindingState.endNode}
+          setEndNode={(endNode) => setPathfindingState(prev => ({ ...prev, endNode }))}
+          pathAlgorithm={pathfindingState.pathAlgorithm}
+          setPathAlgorithm={(pathAlgorithm) => setPathfindingState(prev => ({ ...prev, pathAlgorithm }))}
+          error={pathfindingState.error}
+          setError={(error) => setPathfindingState(prev => ({ ...prev, error }))}
+        />;
       case 'edit':
         return <EditPanel />;
       case 'settings':
@@ -253,12 +285,25 @@ function GraphAppContent({ activePanel, setActivePanel }: { activePanel: PanelTy
 
 export default function RootPage() {
   const [activePanel, setActivePanel] = useState<PanelType>('nodes');
+  const [pathfindingState, setPathfindingState] = useState<PathfindingPanelState>({
+    mode: 'shortest-path',
+    startNode: '',
+    endNode: '',
+    pathAlgorithm: 'astar',
+    error: null,
+  });
+  
   return (
     <Provider store={store}>
       <SidebarProvider>
         <PanelNavbar activePanel={activePanel} onPanelChange={setActivePanel} />
         <SidebarInset className="h-screen overflow-hidden">
-          <GraphAppContent activePanel={activePanel} setActivePanel={setActivePanel} />
+          <GraphAppContent 
+            activePanel={activePanel} 
+            setActivePanel={setActivePanel}
+            pathfindingState={pathfindingState}
+            setPathfindingState={setPathfindingState}
+          />
         </SidebarInset>
       </SidebarProvider>
       <Toaster />

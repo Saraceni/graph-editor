@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { useAppDispatch, useAppSelector } from '@/lib/hooks';
 import { setPathfindingResult, clearPathfindingResult, setCycleResult, clearCycleResult, toggleCycleSelection, selectAllCycles, deselectAllCycles } from '@/lib/redux/slices/graphSlice';
 import { dijkstra, bfs, astar, findCycles } from '@/lib/pathfinding';
@@ -17,18 +16,36 @@ import { AlertCircle, Waypoints } from 'lucide-react';
 type AlgorithmMode = 'shortest-path' | 'cycle-detection';
 type PathAlgorithm = 'dijkstra' | 'bfs' | 'astar';
 
-export function PathfindingPanel() {
+interface PathfindingPanelProps {
+  mode: AlgorithmMode;
+  setMode: (mode: AlgorithmMode) => void;
+  startNode: string;
+  setStartNode: (startNode: string) => void;
+  endNode: string;
+  setEndNode: (endNode: string) => void;
+  pathAlgorithm: PathAlgorithm;
+  setPathAlgorithm: (pathAlgorithm: PathAlgorithm) => void;
+  error: string | null;
+  setError: (error: string | null) => void;
+}
+
+export function PathfindingPanel({
+  mode,
+  setMode,
+  startNode,
+  setStartNode,
+  endNode,
+  setEndNode,
+  pathAlgorithm,
+  setPathAlgorithm,
+  error,
+  setError,
+}: PathfindingPanelProps) {
   const dispatch = useAppDispatch();
   const nodes = useAppSelector(state => state.graph.nodes);
   const graphState = useAppSelector(state => state.graph);
   const pathResult = useAppSelector(state => state.graph.pathfindingResult);
   const cycleResult = useAppSelector(state => state.graph.cycleResult);
-
-  const [mode, setMode] = useState<AlgorithmMode>('shortest-path');
-  const [startNode, setStartNode] = useState('');
-  const [endNode, setEndNode] = useState('');
-  const [pathAlgorithm, setPathAlgorithm] = useState<PathAlgorithm>('astar');
-  const [error, setError] = useState<string | null>(null);
 
   const handleRunAlgorithm = () => {
     setError(null);
