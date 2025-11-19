@@ -9,16 +9,28 @@ export interface PathfindingResult {
   endNode: string;
 }
 
+export interface AnimationStep {
+  visitedNodes: string[];
+  visitedEdges: string[];
+  currentNode?: string;
+  currentNodeNeighbors?: string[];
+  path?: string[];
+  distance?: number;
+  isComplete: boolean;
+  description?: string;
+}
+
 /**
- * Dijkstra's algorithm for weighted shortest path
+ * Dijkstra's algorithm for weighted shortest path (Generator version for animation)
  * Works with both directed and undirected graphs
+ * Yields intermediate states for animation
  */
-export function dijkstra(
+export function* dijkstraGenerator(
   nodes: GraphNode[],
   edges: GraphEdge[],
   startId: string,
   endId: string
-): PathfindingResult | null {
+): Generator<AnimationStep, PathfindingResult | null, unknown> {
   const distances: Record<string, number> = {};
   const previous: Record<string, string | null> = {};
   const unvisited = new Set<string>();
@@ -31,6 +43,14 @@ export function dijkstra(
     previous[node.id] = null;
     unvisited.add(node.id);
   });
+
+  // Yield initial state
+  yield {
+    visitedNodes: [],
+    visitedEdges: [],
+    isComplete: false,
+    description: 'Initializing Dijkstra\'s algorithm',
+  };
 
   while (unvisited.size > 0) {
     let currentId: string | null = null;
@@ -55,11 +75,14 @@ export function dijkstra(
       e => e.target === currentId && !e.isDirected
     );
     const allEdges = [...outgoingEdges, ...incomingEdges];
+    const neighborIds: string[] = [];
 
     allEdges.forEach(edge => {
       const neighborId = edge.source === currentId ? edge.target : edge.source;
+      neighborIds.push(neighborId);
       // Mark edge as visited when we explore it
       visitedEdges.add(edge.id);
+      
       if (unvisited.has(neighborId)) {
         const weight = edge.weight || 1;
         const newDistance = distances[currentId!] + weight;
@@ -69,10 +92,32 @@ export function dijkstra(
         }
       }
     });
+
+    // Yield state after processing current node
+    yield {
+      visitedNodes: Array.from(visitedNodes),
+      visitedEdges: Array.from(visitedEdges),
+      currentNode: currentId,
+      currentNodeNeighbors: neighborIds,
+      isComplete: false,
+      description: currentId === endId 
+        ? `Reached target node ${currentId}` 
+        : `Processing node ${currentId}`,
+    };
+
+    if (currentId === endId) break;
   }
 
   // Reconstruct path
-  if (distances[endId] === Infinity) return null;
+  if (distances[endId] === Infinity) {
+    yield {
+      visitedNodes: Array.from(visitedNodes),
+      visitedEdges: Array.from(visitedEdges),
+      isComplete: true,
+      description: 'No path found',
+    };
+    return null;
+  }
 
   const path: string[] = [];
   let current: string | null = endId;
@@ -81,27 +126,69 @@ export function dijkstra(
     current = previous[current];
   }
 
-  return {
+  const result: PathfindingResult = {
     path,
     distance: distances[endId],
     visitedNodes: Array.from(visitedNodes),
-    visitedEdges: Array.from(visitedEdges), // All edges explored during algorithm
+    visitedEdges: Array.from(visitedEdges),
     startNode: startId,
     endNode: endId,
   };
+
+  // Yield final state with path
+  yield {
+    visitedNodes: Array.from(visitedNodes),
+    visitedEdges: Array.from(visitedEdges),
+    path,
+    distance: distances[endId],
+    isComplete: true,
+    description: `Path found: ${path.length} nodes, distance ${distances[endId]}`,
+  };
+
+  return result;
 }
 
 /**
- * A* algorithm for weighted shortest path with heuristic
- * Uses Euclidean distance as heuristic based on node positions
+ * Dijkstra's algorithm for weighted shortest path (synchronous version)
  * Works with both directed and undirected graphs
  */
-export function astar(
+export function dijkstra(
   nodes: GraphNode[],
   edges: GraphEdge[],
   startId: string,
   endId: string
 ): PathfindingResult | null {
+  const generator = dijkstraGenerator(nodes, edges, startId, endId);
+  let result: PathfindingResult | null = null;
+  let value;
+  do {
+    value = generator.next();
+    if (value.value && 'isComplete' in value.value && value.value.isComplete && value.value.path) {
+      result = {
+        path: value.value.path,
+        distance: value.value.distance!,
+        visitedNodes: value.value.visitedNodes,
+        visitedEdges: value.value.visitedEdges,
+        startNode: startId,
+        endNode: endId,
+      };
+    }
+  } while (!value.done);
+  return result;
+}
+
+/**
+ * A* algorithm for weighted shortest path with heuristic (Generator version for animation)
+ * Uses Euclidean distance as heuristic based on node positions
+ * Works with both directed and undirected graphs
+ * Yields intermediate states for animation
+ */
+export function* astarGenerator(
+  nodes: GraphNode[],
+  edges: GraphEdge[],
+  startId: string,
+  endId: string
+): Generator<AnimationStep, PathfindingResult | null, unknown> {
   // Create node lookup map
   const nodeMap = new Map<string, GraphNode>();
   nodes.forEach(node => {
@@ -160,6 +247,15 @@ export function astar(
     return nodeId;
   };
 
+  // Yield initial state
+  yield {
+    visitedNodes: [],
+    visitedEdges: [],
+    currentNode: startId,
+    isComplete: false,
+    description: 'Initializing A* algorithm',
+  };
+
   while (openSet.length > 0) {
     const currentId = removeFromQueue();
     if (!currentId) break;
@@ -175,7 +271,7 @@ export function astar(
         current = previous[current];
       }
 
-      return {
+      const result: PathfindingResult = {
         path,
         distance: gScore[endId],
         visitedNodes: Array.from(visitedNodes),
@@ -183,6 +279,17 @@ export function astar(
         startNode: startId,
         endNode: endId,
       };
+
+      yield {
+        visitedNodes: Array.from(visitedNodes),
+        visitedEdges: Array.from(visitedEdges),
+        path,
+        distance: gScore[endId],
+        isComplete: true,
+        description: `Path found: ${path.length} nodes, distance ${gScore[endId]}`,
+      };
+
+      return result;
     }
 
     // Check neighbors
@@ -191,9 +298,11 @@ export function astar(
       e => e.target === currentId && !e.isDirected
     );
     const allEdges = [...outgoingEdges, ...incomingEdges];
+    const neighborIds: string[] = [];
 
     allEdges.forEach(edge => {
       const neighborId = edge.source === currentId ? edge.target : edge.source;
+      neighborIds.push(neighborId);
       visitedEdges.add(edge.id);
 
       const weight = edge.weight || 1;
@@ -216,27 +325,83 @@ export function astar(
         }
       }
     });
+
+    // Yield state after processing current node
+    yield {
+      visitedNodes: Array.from(visitedNodes),
+      visitedEdges: Array.from(visitedEdges),
+      currentNode: currentId,
+      currentNodeNeighbors: neighborIds,
+      isComplete: false,
+      description: `Processing node ${currentId} (heuristic: ${fScore[currentId].toFixed(2)})`,
+    };
   }
 
   // No path found
+  yield {
+    visitedNodes: Array.from(visitedNodes),
+    visitedEdges: Array.from(visitedEdges),
+    isComplete: true,
+    description: 'No path found',
+  };
   return null;
 }
 
 /**
- * BFS for unweighted shortest path
+ * A* algorithm for weighted shortest path with heuristic (synchronous version)
+ * Uses Euclidean distance as heuristic based on node positions
+ * Works with both directed and undirected graphs
  */
-export function bfs(
-  _nodes: GraphNode[],
+export function astar(
+  nodes: GraphNode[],
   edges: GraphEdge[],
   startId: string,
   endId: string
 ): PathfindingResult | null {
+  const generator = astarGenerator(nodes, edges, startId, endId);
+  let result: PathfindingResult | null = null;
+  let value;
+  do {
+    value = generator.next();
+    if (value.value && 'isComplete' in value.value && value.value.isComplete && value.value.path) {
+      result = {
+        path: value.value.path,
+        distance: value.value.distance!,
+        visitedNodes: value.value.visitedNodes,
+        visitedEdges: value.value.visitedEdges,
+        startNode: startId,
+        endNode: endId,
+      };
+    }
+  } while (!value.done);
+  return result;
+}
+
+/**
+ * BFS for unweighted shortest path (Generator version for animation)
+ * Yields intermediate states for animation
+ */
+export function* bfsGenerator(
+  _nodes: GraphNode[],
+  edges: GraphEdge[],
+  startId: string,
+  endId: string
+): Generator<AnimationStep, PathfindingResult | null, unknown> {
   const visited = new Set<string>();
   const visitedEdges = new Set<string>();
   const queue: string[] = [startId];
   const discovered = new Set<string>([startId]); // Track discovered nodes
   const parent: Record<string, string | null> = {};
   parent[startId] = null;
+
+  // Yield initial state
+  yield {
+    visitedNodes: [],
+    visitedEdges: [],
+    currentNode: startId,
+    isComplete: false,
+    description: 'Initializing BFS algorithm',
+  };
 
   while (queue.length > 0) {
     const currentId = queue.shift();
@@ -245,7 +410,35 @@ export function bfs(
     if (visited.has(currentId)) continue;
     visited.add(currentId);
 
-    if (currentId === endId) break;
+    if (currentId === endId) {
+      // Reconstruct path
+      const path: string[] = [];
+      let current: string | null = endId;
+      while (current !== null) {
+        path.unshift(current);
+        current = parent[current] || null;
+      }
+
+      const result: PathfindingResult = {
+        path,
+        distance: path.length - 1,
+        visitedNodes: Array.from(visited),
+        visitedEdges: Array.from(visitedEdges),
+        startNode: startId,
+        endNode: endId,
+      };
+
+      yield {
+        visitedNodes: Array.from(visited),
+        visitedEdges: Array.from(visitedEdges),
+        path,
+        distance: path.length - 1,
+        isComplete: true,
+        description: `Path found: ${path.length} nodes, distance ${path.length - 1}`,
+      };
+
+      return result;
+    }
 
     // Find neighbors
     const outgoingEdges = edges.filter(e => e.source === currentId);
@@ -253,9 +446,11 @@ export function bfs(
       e => e.target === currentId && !e.isDirected
     );
     const allEdges = [...outgoingEdges, ...incomingEdges];
+    const neighborIds: string[] = [];
 
     allEdges.forEach(edge => {
       const neighborId = edge.source === currentId ? edge.target : edge.source;
+      neighborIds.push(neighborId);
       // Mark edge as visited when we explore it
       visitedEdges.add(edge.id);
       // Only set parent and add to queue if node hasn't been discovered yet
@@ -265,26 +460,54 @@ export function bfs(
         queue.push(neighborId);
       }
     });
+
+    // Yield state after processing current node
+    yield {
+      visitedNodes: Array.from(visited),
+      visitedEdges: Array.from(visitedEdges),
+      currentNode: currentId,
+      currentNodeNeighbors: neighborIds,
+      isComplete: false,
+      description: `Processing node ${currentId}`,
+    };
   }
 
-  if (!visited.has(endId)) return null;
-
-  // Reconstruct path
-  const path: string[] = [];
-  let current: string | null = endId;
-  while (current !== null) {
-    path.unshift(current);
-    current = parent[current] || null;
-  }
-
-  return {
-    path,
-    distance: path.length - 1,
+  // No path found
+  yield {
     visitedNodes: Array.from(visited),
-    visitedEdges: Array.from(visitedEdges), // All edges explored during algorithm
-    startNode: startId,
-    endNode: endId,
+    visitedEdges: Array.from(visitedEdges),
+    isComplete: true,
+    description: 'No path found',
   };
+  return null;
+}
+
+/**
+ * BFS for unweighted shortest path (synchronous version)
+ */
+export function bfs(
+  _nodes: GraphNode[],
+  edges: GraphEdge[],
+  startId: string,
+  endId: string
+): PathfindingResult | null {
+  const generator = bfsGenerator(_nodes, edges, startId, endId);
+  let result: PathfindingResult | null = null;
+  let value;
+  do {
+    value = generator.next();
+    if (value.value && 'isComplete' in value.value && value.value.isComplete && value.value.path) {
+      result = {
+        path: value.value.path,
+        distance: value.value.distance!,
+        visitedNodes: value.value.visitedNodes,
+        visitedEdges: value.value.visitedEdges,
+        startNode: startId,
+        endNode: endId,
+      };
+    }
+  } while (!value.done);
+  return result;
 }
 
 /**
@@ -298,10 +521,24 @@ export interface CycleResult {
   cycleMap: Record<string, number[]>; // Maps node ID to array of cycle indices it belongs to
 }
 
-export function findCycles(
+export interface CycleAnimationStep {
+  visitedNodes: string[];
+  visitedEdges: string[];
+  currentNode?: string;
+  currentPath: string[];
+  discoveredCycles: string[][];
+  isComplete: boolean;
+  description?: string;
+}
+
+/**
+ * Cycle Detection Generator (for animation)
+ * Yields intermediate states as cycles are discovered
+ */
+export function* findCyclesGenerator(
   nodes: GraphNode[],
   edges: GraphEdge[]
-): CycleResult {
+): Generator<CycleAnimationStep, CycleResult, unknown> {
   // Build adjacency list
   // For directed edges: only add source -> target
   // For undirected edges: add both directions (source -> target and target -> source)
@@ -332,18 +569,47 @@ export function findCycles(
   
   // DFS to find cycles
   const visited = new Set<string>();
+  const visitedEdges = new Set<string>();
   const recStack = new Set<string>();
   const path: string[] = [];
   
-  function dfs(nodeId: string): void {
+  // Create edge map for tracking which edges are explored
+  const edgeMap = new Map<string, GraphEdge>();
+  edges.forEach(edge => {
+    const key = `${edge.source}-${edge.target}`;
+    edgeMap.set(key, edge);
+    if (!edge.isDirected) {
+      edgeMap.set(`${edge.target}-${edge.source}`, edge);
+    }
+  });
+
+  function* dfs(nodeId: string): Generator<CycleAnimationStep, void, unknown> {
     visited.add(nodeId);
     recStack.add(nodeId);
     path.push(nodeId);
     
+    // Yield state when entering node
+    yield {
+      visitedNodes: Array.from(visited),
+      visitedEdges: Array.from(visitedEdges),
+      currentNode: nodeId,
+      currentPath: [...path],
+      discoveredCycles: [...cycles],
+      isComplete: false,
+      description: `Exploring node ${nodeId}`,
+    };
+    
     const neighbors = adjList[nodeId] || [];
     for (const neighbor of neighbors) {
+      // Mark edge as visited
+      const edgeKey = `${nodeId}-${neighbor}`;
+      const edge = edgeMap.get(edgeKey);
+      if (edge) {
+        visitedEdges.add(edge.id);
+      }
+
       if (!visited.has(neighbor)) {
-        dfs(neighbor);
+        yield* dfs(neighbor);
       } else if (recStack.has(neighbor)) {
         // Found a cycle - extract the cycle from the path
         const cycleStart = path.indexOf(neighbor);
@@ -361,6 +627,16 @@ export function findCycles(
                 cycleMap[n].push(cycleIndex);
               }
             });
+
+            yield {
+              visitedNodes: Array.from(visited),
+              visitedEdges: Array.from(visitedEdges),
+              currentNode: nodeId,
+              currentPath: [...path],
+              discoveredCycles: [...cycles],
+              isComplete: false,
+              description: `Cycle found: ${cycle.length - 1} nodes`,
+            };
           }
         }
       }
@@ -371,11 +647,25 @@ export function findCycles(
   }
   
   // Find cycles starting from each unvisited node
-  nodes.forEach(node => {
+  for (const node of nodes) {
     if (!visited.has(node.id)) {
-      dfs(node.id);
+      // Yield initial state for each new DFS
+      yield {
+        visitedNodes: Array.from(visited),
+        visitedEdges: Array.from(visitedEdges),
+        currentNode: node.id,
+        currentPath: [],
+        discoveredCycles: [...cycles],
+        isComplete: false,
+        description: `Starting DFS from node ${node.id}`,
+      };
+
+      const dfsGen = dfs(node.id);
+      for (const step of dfsGen) {
+        yield step;
+      }
     }
-  });
+  }
   
   // Remove duplicate cycles (same cycle but different starting points)
   const uniqueCycles: string[][] = [];
@@ -408,8 +698,55 @@ export function findCycles(
     });
   });
   
-  return {
+  const result: CycleResult = {
     cycles: uniqueCycles,
     cycleMap: newCycleMap,
   };
+
+  // Yield final state
+  yield {
+    visitedNodes: Array.from(visited),
+    visitedEdges: Array.from(visitedEdges),
+    currentPath: [],
+    discoveredCycles: uniqueCycles,
+    isComplete: true,
+    description: `Found ${uniqueCycles.length} cycle${uniqueCycles.length !== 1 ? 's' : ''}`,
+  };
+
+  return result;
+}
+
+/**
+ * Cycle Detection (synchronous version)
+ * Finds all cycles in a graph
+ */
+export function findCycles(
+  nodes: GraphNode[],
+  edges: GraphEdge[]
+): CycleResult {
+  const generator = findCyclesGenerator(nodes, edges);
+  let result: CycleResult | null = null;
+  let value;
+  do {
+    value = generator.next();
+    if (value.value && 'isComplete' in value.value && value.value.isComplete) {
+      result = {
+        cycles: value.value.discoveredCycles,
+        cycleMap: {},
+      };
+      // Rebuild cycleMap for synchronous version
+      nodes.forEach(node => {
+        result!.cycleMap[node.id] = [];
+      });
+      result.cycles.forEach((cycle, index) => {
+        const uniqueNodes = new Set(cycle);
+        uniqueNodes.forEach(nodeId => {
+          if (!result!.cycleMap[nodeId].includes(index)) {
+            result!.cycleMap[nodeId].push(index);
+          }
+        });
+      });
+    }
+  } while (!value.done);
+  return result!;
 }

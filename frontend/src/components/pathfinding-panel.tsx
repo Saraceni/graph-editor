@@ -1,6 +1,7 @@
 import { useAppDispatch, useAppSelector } from '@/lib/hooks';
-import { setPathfindingResult, clearPathfindingResult, setCycleResult, clearCycleResult, toggleCycleSelection, selectAllCycles, deselectAllCycles } from '@/lib/redux/slices/graphSlice';
-import { dijkstra, bfs, astar, findCycles } from '@/lib/pathfinding';
+import { clearPathfindingResult, clearCycleResult, toggleCycleSelection, selectAllCycles, deselectAllCycles, setAnimationSteps, clearAnimation, setAnimationSpeed } from '@/lib/redux/slices/graphSlice';
+import { dijkstraGenerator, bfsGenerator, astarGenerator, findCyclesGenerator } from '@/lib/pathfinding';
+import { useAnimationController } from '@/lib/animation-controller';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -11,7 +12,7 @@ import {
 } from '@/components/ui/select';
 import { Combobox } from '@/components/ui/combobox';
 import { Checkbox } from '@/components/ui/checkbox';
-import { AlertCircle, Waypoints } from 'lucide-react';
+import { AlertCircle, Waypoints, Play, Pause, SkipBack, SkipForward, RotateCcw } from 'lucide-react';
 
 type AlgorithmMode = 'shortest-path' | 'cycle-detection';
 type PathAlgorithm = 'dijkstra' | 'bfs' | 'astar';
@@ -46,9 +47,13 @@ export function PathfindingPanel({
   const graphState = useAppSelector(state => state.graph);
   const pathResult = useAppSelector(state => state.graph.pathfindingResult);
   const cycleResult = useAppSelector(state => state.graph.cycleResult);
+  const animationController = useAnimationController();
 
   const handleRunAlgorithm = () => {
     setError(null);
+    dispatch(clearAnimation());
+    dispatch(clearPathfindingResult());
+    dispatch(clearCycleResult());
 
     if (mode === 'shortest-path') {
       if (!startNode || !endNode) {
@@ -61,22 +66,50 @@ export function PathfindingPanel({
         return;
       }
 
-      let result: any = null;
-
+      // Collect animation steps from generator
+      let generator: Generator<any, any, unknown>;
       if (pathAlgorithm === 'dijkstra') {
-        result = dijkstra(graphState.nodes, graphState.edges, startNode, endNode);
+        generator = dijkstraGenerator(graphState.nodes, graphState.edges, startNode, endNode);
       } else if (pathAlgorithm === 'bfs') {
-        result = bfs(graphState.nodes, graphState.edges, startNode, endNode);
-      } else if (pathAlgorithm === 'astar') {
-        result = astar(graphState.nodes, graphState.edges, startNode, endNode);
+        generator = bfsGenerator(graphState.nodes, graphState.edges, startNode, endNode);
+      } else {
+        generator = astarGenerator(graphState.nodes, graphState.edges, startNode, endNode);
       }
 
-      if (result && result.path) {
-        dispatch(setPathfindingResult(result));
-        dispatch(clearCycleResult());
-      } else {
+      const steps: any[] = [];
+      let result: any = null;
+      let value;
+      do {
+        value = generator.next();
+        if (value.value) {
+          if ('isComplete' in value.value && value.value.isComplete) {
+            // This is the final step
+            if (value.value.path) {
+              result = {
+                path: value.value.path,
+                distance: value.value.distance,
+                visitedNodes: value.value.visitedNodes,
+                visitedEdges: value.value.visitedEdges,
+                startNode,
+                endNode,
+              };
+            }
+          }
+          steps.push(value.value);
+        }
+      } while (!value.done);
+
+      if (steps.length > 0) {
+        dispatch(setAnimationSteps({
+          steps,
+          startNode,
+          endNode,
+          algorithmType: 'pathfinding',
+        }));
+        // Start animation automatically
+        setTimeout(() => animationController.play(), 100);
+      } else if (!result) {
         setError('No path found between these nodes');
-        dispatch(clearPathfindingResult());
       }
     } else if (mode === 'cycle-detection') {
       // Check if graph has any edges (directed or undirected)
@@ -85,16 +118,62 @@ export function PathfindingPanel({
         return;
       }
 
-      const result = findCycles(graphState.nodes, graphState.edges);
-      dispatch(setCycleResult(result));
-      dispatch(clearPathfindingResult());
+      // Collect animation steps from generator
+      const generator = findCyclesGenerator(graphState.nodes, graphState.edges);
+      const steps: any[] = [];
+      let result: any = null;
+      let value;
+      do {
+        value = generator.next();
+        if (value.value) {
+          if ('isComplete' in value.value && value.value.isComplete) {
+            // This is the final step
+            if (value.value.discoveredCycles) {
+              // Build cycleMap
+              const cycleMap: Record<string, number[]> = {};
+              value.value.discoveredCycles.forEach((cycle: string[], index: number) => {
+                const uniqueNodes = new Set(cycle);
+                uniqueNodes.forEach(nodeId => {
+                  if (!cycleMap[nodeId]) {
+                    cycleMap[nodeId] = [];
+                  }
+                  if (!cycleMap[nodeId].includes(index)) {
+                    cycleMap[nodeId].push(index);
+                  }
+                });
+              });
+              result = {
+                cycles: value.value.discoveredCycles,
+                cycleMap,
+              };
+            }
+          }
+          steps.push(value.value);
+        }
+      } while (!value.done);
+
+      if (steps.length > 0) {
+        dispatch(setAnimationSteps({
+          steps,
+          algorithmType: 'cycle-detection',
+        }));
+        // Start animation automatically
+        setTimeout(() => animationController.play(), 100);
+      } else if (!result) {
+        setError('No cycles found');
+      }
     }
   };
 
   const handleClear = () => {
+    dispatch(clearAnimation());
     dispatch(clearPathfindingResult());
     dispatch(clearCycleResult());
     setError(null);
+  };
+
+  const handleSpeedChange = (speed: number) => {
+    dispatch(setAnimationSpeed(speed));
   };
 
   const resultPath = pathResult?.path.map(id => nodes.find(n => n.id === id)?.label).join(' → ');
@@ -174,8 +253,84 @@ export function PathfindingPanel({
             </Button>
           </div>
         </div>
-
         <div className="flex-1 overflow-y-auto space-y-4 min-h-0">
+          {/* Animation Controls */}
+          {animationController.animationState && animationController.totalSteps > 0 && (
+            <div className="border rounded p-3 space-y-3 shrink-0">
+              <div className="flex items-center justify-between">
+                <div className="text-xs font-semibold">Animation Controls</div>
+                <div className="text-xs text-muted-foreground">
+                  Step {animationController.currentStep + 1} of {animationController.totalSteps}
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={animationController.stepBackward}
+                  disabled={animationController.currentStep === 0}
+                >
+                  <SkipBack className="w-3 h-3" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={animationController.isPaused ? animationController.play : animationController.pause}
+                  className="flex-1"
+                >
+                  {animationController.isPaused ? (
+                    <>
+                      <Play className="w-3 h-3" />
+                      <span>Play</span>
+                    </>
+                  ) : (
+                    <>
+                      <Pause className="w-3 h-3" />
+                      <span>Pause</span>
+                    </>
+                  )}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={animationController.stepForward}
+                  disabled={animationController.currentStep >= animationController.totalSteps - 1}
+                >
+                  <SkipForward className="w-3 h-3" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={animationController.reset}
+                >
+                  <RotateCcw className="w-3 h-3" />
+                </Button>
+              </div>
+
+              <div className="space-y-1">
+                <div className="flex items-center justify-between text-xs">
+                  <span>Speed</span>
+                  <span>{(1000 / animationController.animationState.animationSpeed).toFixed(2)}x</span>
+                </div>
+                <input
+                  type="range"
+                  min="100"
+                  max="2000"
+                  step="100"
+                  value={2100 - animationController.animationState.animationSpeed}
+                  onChange={(e) => handleSpeedChange(2100 - Number(e.target.value))}
+                  className="w-full"
+                />
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span>Slow</span>
+                  <span>Fast</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+
           {error && (
             <div className="flex gap-2 items-start p-2 bg-destructive/10 border border-destructive rounded text-sm text-destructive shrink-0">
               <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />

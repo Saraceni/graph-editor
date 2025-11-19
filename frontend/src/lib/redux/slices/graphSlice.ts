@@ -22,6 +22,31 @@ export interface GraphSettings {
   edgeThickness: number;
 }
 
+export type AnimationStep = {
+  visitedNodes: string[];
+  visitedEdges: string[];
+  currentNode?: string;
+  currentNodeNeighbors?: string[];
+  path?: string[];
+  distance?: number;
+  isComplete: boolean;
+  description?: string;
+  // For cycle detection
+  currentPath?: string[];
+  discoveredCycles?: string[][];
+};
+
+export interface AnimationState {
+  isAnimating: boolean;
+  animationSteps: AnimationStep[];
+  currentStepIndex: number;
+  animationSpeed: number; // milliseconds between steps
+  isPaused: boolean;
+  startNode?: string;
+  endNode?: string;
+  algorithmType?: 'pathfinding' | 'cycle-detection';
+}
+
 export interface GraphState {
   nodes: GraphNode[];
   edges: GraphEdge[];
@@ -40,6 +65,7 @@ export interface GraphState {
     cycleMap: Record<string, number[]>;
     selectedCycles: number[]; // Indices of selected cycles to highlight
   } | null;
+  animationState?: AnimationState | null;
   settings: GraphSettings;
 }
 
@@ -57,7 +83,8 @@ const initialState: GraphState = {
   selectedNode: null,
   selectedEdge: null,
   pathfindingResult: null,
-    cycleResult: null,
+  cycleResult: null,
+  animationState: null,
   settings: defaultSettings,
 };
 
@@ -132,6 +159,7 @@ const graphSlice = createSlice({
     },
     clearPathfindingResult: (state) => {
       state.pathfindingResult = null;
+      state.animationState = null;
     },
     setCycleResult: (
       state,
@@ -149,6 +177,7 @@ const graphSlice = createSlice({
     },
     clearCycleResult: (state) => {
       state.cycleResult = null;
+      state.animationState = null;
     },
     toggleCycleSelection: (state, action: PayloadAction<number>) => {
       if (state.cycleResult) {
@@ -177,6 +206,7 @@ const graphSlice = createSlice({
       state.selectedEdge = null;
       state.pathfindingResult = null;
       state.cycleResult = null;
+      state.animationState = null;
     },
     setGraphState: (_state, action: PayloadAction<GraphState>) => {
       // Ensure settings exist when loading from storage (migration for old saved states)
@@ -191,6 +221,74 @@ const graphSlice = createSlice({
     },
     resetSettings: (state) => {
       state.settings = defaultSettings;
+    },
+    // Animation actions
+    setAnimationSteps: (
+      state,
+      action: PayloadAction<{
+        steps: AnimationStep[];
+        startNode?: string;
+        endNode?: string;
+        algorithmType: 'pathfinding' | 'cycle-detection';
+      }>
+    ) => {
+      state.animationState = {
+        isAnimating: true,
+        animationSteps: action.payload.steps,
+        currentStepIndex: 0,
+        animationSpeed: 500, // default 500ms per step
+        isPaused: false,
+        startNode: action.payload.startNode,
+        endNode: action.payload.endNode,
+        algorithmType: action.payload.algorithmType,
+      };
+    },
+    setCurrentStepIndex: (state, action: PayloadAction<number>) => {
+      if (state.animationState) {
+        const maxIndex = state.animationState.animationSteps.length - 1;
+        state.animationState.currentStepIndex = Math.max(0, Math.min(action.payload, maxIndex));
+      }
+    },
+    setAnimationSpeed: (state, action: PayloadAction<number>) => {
+      if (state.animationState) {
+        state.animationState.animationSpeed = action.payload;
+      }
+    },
+    toggleAnimation: (state) => {
+      if (state.animationState) {
+        state.animationState.isPaused = !state.animationState.isPaused;
+        state.animationState.isAnimating = !state.animationState.isPaused;
+      }
+    },
+    playAnimation: (state) => {
+      if (state.animationState) {
+        state.animationState.isPaused = false;
+        state.animationState.isAnimating = true;
+      }
+    },
+    pauseAnimation: (state) => {
+      if (state.animationState) {
+        state.animationState.isPaused = true;
+        state.animationState.isAnimating = false;
+      }
+    },
+    clearAnimation: (state) => {
+      state.animationState = null;
+    },
+    stepAnimationForward: (state) => {
+      if (state.animationState) {
+        const maxIndex = state.animationState.animationSteps.length - 1;
+        if (state.animationState.currentStepIndex < maxIndex) {
+          state.animationState.currentStepIndex += 1;
+        }
+      }
+    },
+    stepAnimationBackward: (state) => {
+      if (state.animationState) {
+        if (state.animationState.currentStepIndex > 0) {
+          state.animationState.currentStepIndex -= 1;
+        }
+      }
     },
   },
 });
@@ -215,6 +313,15 @@ export const {
   setGraphState,
   updateSettings,
   resetSettings,
+  setAnimationSteps,
+  setCurrentStepIndex,
+  setAnimationSpeed,
+  toggleAnimation,
+  playAnimation,
+  pauseAnimation,
+  clearAnimation,
+  stepAnimationForward,
+  stepAnimationBackward,
 } = graphSlice.actions;
 
 export default graphSlice.reducer;

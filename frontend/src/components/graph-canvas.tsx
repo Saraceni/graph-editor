@@ -22,6 +22,7 @@ function GraphScene() {
   const selectedEdgeId = useAppSelector((state) => state.graph.selectedEdge);
   const pathfindingResult = useAppSelector((state) => state.graph.pathfindingResult);
   const cycleResult = useAppSelector((state) => state.graph.cycleResult);
+  const animationState = useAppSelector((state) => state.graph.animationState);
   const settings = useAppSelector((state) => state.graph.settings);
   
   const [connectionSource, setConnectionSource] = useState<string | null>(null);
@@ -104,37 +105,120 @@ function GraphScene() {
 
 
   // Get pathfinding visualization data
-  const pathNodeIds = pathfindingResult?.path || [];
+  // Use animation state if available, otherwise fall back to final result
+  const currentStep = animationState?.animationSteps[animationState.currentStepIndex];
+  
+  const pathNodeIds = useMemo(() => {
+    // Prioritize pathfindingResult if it exists (animation completed)
+    if (pathfindingResult?.path) {
+      return pathfindingResult.path;
+    }
+    
+    // During active animation, only show path when algorithm completes
+    if (animationState && animationState.algorithmType === 'pathfinding' && currentStep) {
+      if (currentStep.isComplete && currentStep.path) {
+        return currentStep.path;
+      }
+      return [];
+    }
+    
+    return [];
+  }, [animationState, currentStep, pathfindingResult]);
+
   const visitedNodeIds = useMemo(() => {
+    if (animationState && currentStep) {
+      return new Set(currentStep.visitedNodes || []);
+    }
     return pathfindingResult?.visitedNodes ? new Set(pathfindingResult.visitedNodes) : new Set<string>();
-  }, [pathfindingResult]);
+  }, [animationState, currentStep, pathfindingResult]);
+
   const visitedEdgeIds = useMemo(() => {
+    if (animationState && currentStep) {
+      return new Set(currentStep.visitedEdges || []);
+    }
     return pathfindingResult?.visitedEdges ? new Set(pathfindingResult.visitedEdges) : new Set<string>();
-  }, [pathfindingResult]);
-  const startNodeId = pathfindingResult?.startNode;
-  const endNodeId = pathfindingResult?.endNode;
+  }, [animationState, currentStep, pathfindingResult]);
+
+  const startNodeId = useMemo(() => {
+    if (animationState?.algorithmType === 'pathfinding') {
+      return animationState.startNode;
+    }
+    return pathfindingResult?.startNode;
+  }, [animationState, pathfindingResult]);
+
+  const endNodeId = useMemo(() => {
+    if (animationState?.algorithmType === 'pathfinding') {
+      return animationState.endNode;
+    }
+    return pathfindingResult?.endNode;
+  }, [animationState, pathfindingResult]);
   
   const pathEdgeIds = useMemo(() => {
-    if (!pathfindingResult?.path) return new Set<string>();
-    const edgeIds = new Set<string>();
-    for (let i = 0; i < pathfindingResult.path.length - 1; i++) {
-      const sourceId = pathfindingResult.path[i];
-      const targetId = pathfindingResult.path[i + 1];
-      const edge = graphState.edges.find(
-        (e) =>
-          (e.source === sourceId && e.target === targetId) ||
-          (!e.isDirected && e.source === targetId && e.target === sourceId)
-      );
-      if (edge) edgeIds.add(edge.id);
-    }
-    return edgeIds;
-  }, [pathfindingResult, graphState.edges]);
 
-  // Determine if we're in cycle highlighting mode (cycles active and no pathfinding)
-  const isCycleMode = Boolean(cycleResult && !pathfindingResult);
+    // During active animation, only show path edges when algorithm completes
+    if (animationState && animationState.algorithmType === 'pathfinding' && currentStep) {
+      if (currentStep.isComplete && currentStep.path) {
+        const edgeIds = new Set<string>();
+        for (let i = 0; i < currentStep.path.length - 1; i++) {
+          const sourceId = currentStep.path[i];
+          const targetId = currentStep.path[i + 1];
+          const edge = graphState.edges.find(
+            (e) =>
+              (e.source === sourceId && e.target === targetId) ||
+              (!e.isDirected && e.source === targetId && e.target === sourceId)
+          );
+          if (edge) edgeIds.add(edge.id);
+        }
+        return edgeIds;
+      }
+      return new Set<string>();
+    }
+
+    // Prioritize pathfindingResult if it exists (animation completed)
+    if (pathfindingResult?.path) {
+      const edgeIds = new Set<string>();
+      for (let i = 0; i < pathfindingResult.path.length - 1; i++) {
+        const sourceId = pathfindingResult.path[i];
+        const targetId = pathfindingResult.path[i + 1];
+        const edge = graphState.edges.find(
+          (e) =>
+            (e.source === sourceId && e.target === targetId) ||
+            (!e.isDirected && e.source === targetId && e.target === sourceId)
+        );
+        if (edge) edgeIds.add(edge.id);
+      }
+      return edgeIds;
+    }
+    
+    
+    
+    return new Set<string>();
+  }, [animationState, currentStep, pathfindingResult, graphState.edges]);
+
+  // Determine if we're in cycle highlighting mode (cycles active and no pathfinding animation)
+  const isCycleMode = useMemo(() => {
+    if (animationState?.algorithmType === 'cycle-detection' && currentStep) {
+      // During cycle detection animation, show discovered cycles progressively
+      return true;
+    }
+    return Boolean(cycleResult && !pathfindingResult && !animationState);
+  }, [animationState, currentStep, cycleResult, pathfindingResult]);
 
   // Get cycle index for a node (returns the first selected cycle the node belongs to)
   const getNodeCycleIndex = useMemo(() => {
+    // During cycle detection animation, show discovered cycles
+    if (animationState?.algorithmType === 'cycle-detection' && currentStep?.discoveredCycles) {
+      return (nodeId: string): number | null => {
+        const discoveredCycles = currentStep.discoveredCycles || [];
+        for (let i = 0; i < discoveredCycles.length; i++) {
+          if (discoveredCycles[i].includes(nodeId)) {
+            return i;
+          }
+        }
+        return null;
+      };
+    }
+    
     if (!cycleResult) return () => null;
     return (nodeId: string): number | null => {
       const cycleIndices = cycleResult.cycleMap[nodeId] || [];
@@ -146,7 +230,7 @@ function GraphScene() {
       }
       return null;
     };
-  }, [cycleResult]);
+  }, [animationState, currentStep, cycleResult]);
 
   return (
     <>
@@ -155,10 +239,10 @@ function GraphScene() {
         enableZoom={true}
         enableRotate={!isDraggingNode}
         minDistance={5}
-        maxDistance={50}
+        maxDistance={100}
       />
       {/* @ts-ignore - React Three Fiber primitives */}
-      <ambientLight intensity={0.5} />
+      <ambientLight intensity={1} />
       {/* @ts-ignore - React Three Fiber primitives */}
       <pointLight position={[10, 10, 10]} intensity={1} />
       {/* @ts-ignore - React Three Fiber primitives */}
@@ -205,7 +289,47 @@ function GraphScene() {
         // Determine if edge is part of a selected cycle
         // An edge is in a cycle if both source and target are in the same selected cycle
         let edgeCycleIndex: number | null = null;
-        if (cycleResult && cycleResult.selectedCycles.length > 0) {
+        
+        // During cycle detection animation, check discovered cycles
+        if (animationState?.algorithmType === 'cycle-detection' && currentStep?.discoveredCycles) {
+          const discoveredCycles = currentStep.discoveredCycles;
+          for (let cycleIndex = 0; cycleIndex < discoveredCycles.length; cycleIndex++) {
+            const cycle = discoveredCycles[cycleIndex];
+            // Check if both source and target are in this cycle
+            if (cycle.includes(edge.source) && cycle.includes(edge.target)) {
+              // Check if this edge is actually part of the cycle (consecutive nodes in cycle)
+              for (let i = 0; i < cycle.length - 1; i++) {
+                if (edge.isDirected) {
+                  if (cycle[i] === edge.source && cycle[i + 1] === edge.target) {
+                    edgeCycleIndex = cycleIndex;
+                    break;
+                  }
+                } else {
+                  if ((cycle[i] === edge.source && cycle[i + 1] === edge.target) ||
+                      (cycle[i] === edge.target && cycle[i + 1] === edge.source)) {
+                    edgeCycleIndex = cycleIndex;
+                    break;
+                  }
+                }
+              }
+              // Also check closing edge
+              if (edgeCycleIndex === null && cycle.length > 0) {
+                const lastIdx = cycle.length - 1;
+                if (edge.isDirected) {
+                  if (cycle[lastIdx] === edge.source && cycle[0] === edge.target) {
+                    edgeCycleIndex = cycleIndex;
+                  }
+                } else {
+                  if ((cycle[lastIdx] === edge.source && cycle[0] === edge.target) ||
+                      (cycle[lastIdx] === edge.target && cycle[0] === edge.source)) {
+                    edgeCycleIndex = cycleIndex;
+                  }
+                }
+              }
+              if (edgeCycleIndex !== null) break;
+            }
+          }
+        } else if (cycleResult && cycleResult.selectedCycles.length > 0) {
           const sourceCycleIndices = cycleResult.cycleMap[edge.source] || [];
           const targetCycleIndices = cycleResult.cycleMap[edge.target] || [];
           
