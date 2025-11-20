@@ -12,7 +12,7 @@ Create, edit and remove nodes and edges. Search for nodes and edges. Support for
 ## Getting started
 
 ### Dependencies
-This projects relies on [React 19](https://react.dev/blog/2024/12/05/react-19), [Vite](https://vite.dev/), [Tailwind CSS](https://tailwindcss.com/), [Shadcn](https://ui.shadcn.com/) and [Three.js](https://threejs.org/) for it's core functionality on the frontend. The backend is based on [Node.js](https://nodejs.org/), and [ws](https://www.npmjs.com/package/ws) for websocket. Both were written using [Tyepscript](https://www.typescriptlang.org/).
+This projects relies on [React 19](https://react.dev/blog/2024/12/05/react-19), [Vite](https://vite.dev/), [Tailwind CSS](https://tailwindcss.com/), [Shadcn](https://ui.shadcn.com/) and [Three.js](https://threejs.org/) for it's core functionality on the frontend. The backend is based on [Node.js](https://nodejs.org/), [ws](https://www.npmjs.com/package/ws) for websocket and [Y.js](https://yjs.dev/) for conflic-free merges. Both were written using [Tyepscript](https://www.typescriptlang.org/).
 
 
 ### Installing
@@ -37,7 +37,7 @@ npm run dev
 ```
 
 #### Backend
-For installing the frontend dependencies, first you need to enter the backend folder from the root of the project:
+For installing the backend dependencies, first you need to enter the backend folder from the root of the project:
 
 ```
 cd backend
